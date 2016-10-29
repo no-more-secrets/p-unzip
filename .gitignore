@@ -3,6 +3,7 @@
 *.lo
 *.o
 *.obj
+*.d
 
 # Precompiled Headers
 *.gch
@@ -31,3 +32,4 @@
 /bin-*
 /makerules
 *.zip
+/src/p-unzip
