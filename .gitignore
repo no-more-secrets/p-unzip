@@ -27,3 +27,7 @@
 *.exe
 *.out
 *.app
+/.location
+/bin-*
+/makerules
+*.zip
