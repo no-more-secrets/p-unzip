@@ -1,57 +1,70 @@
-#include <cstdio>
-#include <iostream>
-#include <stdexcept>
+#include "ptr_resource.hpp"
+#include "utils.hpp"
+#include "zip.hpp"
 
-#include <zip.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstdint>
+#include <iostream>
+#include <string>
+#include <stdexcept>
+#include <vector>
 
 using namespace std;
 
-int main()
+int main( int argc, char* argv[] )
 {
-    cout << "Hello Unzip" << endl;
+    try {
 
-    char const* filename = "project.zip";
-    FILE* fp;
-    if( !(fp = fopen( filename, "rb" )) )
-        throw runtime_error( "failed to open file" );
-    cout << "Opened file " << filename << endl;
+    if( argc != 3 ) {
+        cerr << "Usage: p-unzip N file.zip" << endl;
+        cerr << "  where `N` is number of threads." << endl;
+        return 1;
+    }
 
-    if( fseek( fp, 0, SEEK_END ) != 0 )
-        throw runtime_error( "fialed to seek to end of file" );
-    auto length = ftell( fp );
+    string filename = argv[2];
+    log( "File: " + filename );
+
+    int jobs = atoi( argv[1] );
+    if( jobs <= 0 )
+        throw runtime_error( "invalid number of jobs" );
+    log( "Jobs: " + string( argv[1] ) );
+
+    File f( filename, "rb" );
+    log( "Opened file " + filename );
+
+    if( fseek( f.get(), 0, SEEK_END ) != 0 )
+        throw runtime_error( "failed to seek to end of file" );
+    size_t length = ftell( f.get() );
     cout << "Length: " << length << endl;
-    rewind( fp );
+    rewind( f.get() );
 
-    void* buffer;
-    if( !(buffer = malloc( length )) )
-        throw runtime_error( "failed to allocate initial buffer" );
+    vector<uint8_t> buffer( length );
+    if( buffer.size() != length )
+        throw runtime_error( "invalid buffer size" );
 
-    auto length_read = fread( buffer, 1, length, fp );
-    if( length != static_cast<decltype( length )>( length_read ) )
+    void* start = &buffer[0];
+    auto length_read = fread( start, 1, length, f.get() );
+    if( length != length_read )
         throw runtime_error( "failed to read zip file" );
     cout << "Read " << length_read << " bytes" << endl;
 
     /////////////////////////////////////////////////////////////
 
-    zip_error_t error;
-    zip_source_t* zs;
-    if( !(zs = zip_source_buffer_create( buffer, length, 0, &error ) ) )
-        throw runtime_error( "failed to create zip source from buffer" );
+    ZipSource zs( start, length );
 
-    zip_t* z;
-    if( !(z = zip_open_from_source( zs, ZIP_RDONLY, &error )) )
-        throw runtime_error( "failed to open zip from source" );
+    Zip z( zs );
 
-    auto count = zip_get_num_entries( z, ZIP_FL_UNCHANGED );
+    auto count = zip_get_num_entries( z.get(), ZIP_FL_UNCHANGED );
     cout << "Found " << count << " entries:" << endl;
 
     for( auto i = 0; i < count; ++i ) {
 
         zip_stat_t s;
-        if( zip_stat_index( z, i, ZIP_FL_UNCHANGED, &s ) )
+        if( zip_stat_index( z.get(), i, ZIP_FL_UNCHANGED, &s ) )
             throw runtime_error( "failed to stat file" );
 
-        if( s.valid & ZIP_STAT_INDEX     ) cout << "  index: " << s.index     << endl;
+        if( s.valid & ZIP_STAT_INDEX     ) cout << "  index: "       << s.index     << endl;
         if( s.valid & ZIP_STAT_NAME      ) cout << "    name:      " << s.name      << endl;
         if( s.valid & ZIP_STAT_SIZE      ) cout << "    size:      " << s.size      << endl;
         if( s.valid & ZIP_STAT_COMP_SIZE ) cout << "    comp_size: " << s.comp_size << endl;
@@ -59,13 +72,10 @@ int main()
         if( s.valid & ZIP_STAT_FLAGS     ) cout << "    flags:     " << s.flags     << endl;
     }
 
-    zip_close( z );
-
-    zip_source_close( zs );
-
     /////////////////////////////////////////////////////////////
 
-    free( buffer );
-
-    fclose( fp );
+    } catch( exception const& e ) {
+        cerr << "exception: " << e.what() << endl;
+        return 1;
+    }
 }
