@@ -9,8 +9,9 @@ LD  := $(CC)
 ENABLE_BIN_FOLDER = 1
 
 ifeq ($(OS),OSX)
-    TP_INCLUDES_EXTRA += -I/opt/local/include            \
-                         -I/opt/local/lib/libzip/include
+    TP_INCLUDES_EXTRA += -I/opt/local/include
+    TP_LINK_EXTRA     += -L/opt/local/lib
+    LIBZIP_INCLUDE    := -I/opt/local/lib/libzip/include
 endif
 
 $(call enter,src)
