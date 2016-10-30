@@ -21,4 +21,10 @@ LD  := $(CC)
 LDFLAGS     :=
 LDFLAGS_LIB := $(LDFLAGS) -shared 
 
+ENABLE_BIN_FOLDER = 1
+
 INSTALL_PREFIX := $(HOME)/tmp
+
+######################################
+CWD := $(TOPLEVELWD)
+$(call enter,src)

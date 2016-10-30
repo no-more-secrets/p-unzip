@@ -30,6 +30,6 @@
 *.app
 /.location
 /bin-*
-/makerules
 *.zip
 /src/p-unzip
+/Makefile
