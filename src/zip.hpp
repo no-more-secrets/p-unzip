@@ -4,16 +4,22 @@
 #pragma once
 
 #include "ptr_resource.hpp"
+#include "utils.hpp"
 
 #include <zip.h>
+#include <memory>
 
 /****************************************************************
  * ZipSource
  ***************************************************************/
-class ZipSource : public PointerResource<zip_source_t, ZipSource> {
+class ZipSource : public PtrRes<zip_source_t, ZipSource> {
+
+    Buffer b;
 
 public:
-    ZipSource( void* buffer, size_t length );
+    using SP = std::shared_ptr<ZipSource>;
+
+    ZipSource( Buffer&& buffer );
 
     void destroyer();
 };
@@ -21,10 +27,12 @@ public:
 /****************************************************************
  * Zip
  ***************************************************************/
-class Zip : public PointerResource<zip_t, Zip> {
+class Zip : public PtrRes<zip_t, Zip> {
+
+    ZipSource::SP zs;
 
 public:
-    Zip( ZipSource& zs );
+    Zip( ZipSource::SP& zs );
 
     void destroyer();
 };

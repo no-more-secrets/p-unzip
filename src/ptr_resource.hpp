@@ -6,7 +6,7 @@
  * Resource manager for raw pointers
  ***************************************************************/
 template<typename PtrT, typename Child>
-class PointerResource {
+class PtrRes {
 
 protected:
 
@@ -14,17 +14,18 @@ protected:
 
     void release() { p = NULL; }
 
-    PointerResource() : p( NULL ) {}
+    PtrRes() : p( NULL ) {}
 
-    PointerResource( PointerResource const& )            = delete;
-    PointerResource& operator=( PointerResource const& ) = delete;
-    PointerResource( PointerResource&& right )           = delete;
-    /*{
-        p = right.p;
-        right.release();
-    }*/
+    PtrRes( PtrRes const& )            = delete;
+    PtrRes& operator=( PtrRes const& ) = delete;
+    PtrRes& operator=( PtrRes&& )      = delete;
 
 public:
+
+    PtrRes( PtrRes&& right )
+        : p( std::move( right.p ) ) {
+        right.release();
+    }
 
     void destroy() {
         if( p ) {
@@ -33,13 +34,12 @@ public:
         }
     }
 
-    ~PointerResource() {
-        destroy();
-    }
+    ~PtrRes() { destroy(); }
 
     PtrT* get() {
         if( !p )
-            throw std::runtime_error( "attempted to get() reference NULL pointer" );
+            throw std::runtime_error(
+                "attempted to get() reference NULL pointer" );
         return p;
     }
 

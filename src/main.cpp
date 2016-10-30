@@ -4,11 +4,9 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <cstdint>
 #include <iostream>
 #include <string>
 #include <stdexcept>
-#include <vector>
 
 using namespace std;
 
@@ -33,25 +31,7 @@ int main( int argc, char* argv[] )
     File f( filename, "rb" );
     log( "Opened file " + filename );
 
-    if( fseek( f.get(), 0, SEEK_END ) != 0 )
-        throw runtime_error( "failed to seek to end of file" );
-    size_t length = ftell( f.get() );
-    cout << "Length: " << length << endl;
-    rewind( f.get() );
-
-    vector<uint8_t> buffer( length );
-    if( buffer.size() != length )
-        throw runtime_error( "invalid buffer size" );
-
-    void* start = &buffer[0];
-    auto length_read = fread( start, 1, length, f.get() );
-    if( length != length_read )
-        throw runtime_error( "failed to read zip file" );
-    cout << "Read " << length_read << " bytes" << endl;
-
-    /////////////////////////////////////////////////////////////
-
-    ZipSource zs( start, length );
+    auto zs = make_shared<ZipSource>( f.read() );
 
     Zip z( zs );
 
@@ -71,8 +51,6 @@ int main( int argc, char* argv[] )
         if( s.valid & ZIP_STAT_MTIME     ) cout << "    mtime:     " << s.mtime     << endl;
         if( s.valid & ZIP_STAT_FLAGS     ) cout << "    flags:     " << s.flags     << endl;
     }
-
-    /////////////////////////////////////////////////////////////
 
     } catch( exception const& e ) {
         cerr << "exception: " << e.what() << endl;
