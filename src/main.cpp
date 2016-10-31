@@ -16,7 +16,8 @@ int main( int argc, char* argv[] )
 
     if( argc != 3 ) {
         cerr << "Usage: p-unzip N file.zip" << endl;
-        cerr << "  where `N` is number of threads." << endl;
+        cerr << endl;
+        cerr << "    where `N` is number of threads." << endl;
         return 1;
     }
 
