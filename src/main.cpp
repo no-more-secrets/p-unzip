@@ -1,36 +1,54 @@
 #include "ptr_resource.hpp"
 #include "utils.hpp"
 #include "zip.hpp"
+#include "options.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <sstream>
 
 using namespace std;
+
+void usage() {
+    cerr << "Usage: p-unzip [-j N] file.zip" << endl;
+    cerr << endl;
+    cerr << "    where `N` is number of threads." << endl;
+}
 
 int main( int argc, char* argv[] )
 {
     try {
 
-    if( argc != 3 ) {
-        cerr << "Usage: p-unzip N file.zip" << endl;
-        cerr << endl;
-        cerr << "    where `N` is number of threads." << endl;
+    options::OptResult opt_result;
+    set<char> opts{ 'j' };
+    bool parsed = options::parse( argc-1, argv+1, opts, opt_result );
+
+    auto& positional = opt_result.second;
+    auto& options    = opt_result.first;
+
+    if( !parsed || positional.size() != 1 ) {
+        usage();
         return 1;
     }
 
-    string filename = argv[2];
+    int jobs = 1;
+    if( options.count( 'j' ) ) {
+        jobs = atoi( options['j'].get().c_str() );
+        if( jobs <= 0 )
+            throw runtime_error( "invalid number of jobs" );
+    }
+
+    string filename = positional[0];
     log( "File: " + filename );
 
-    int jobs = atoi( argv[1] );
-    if( jobs <= 0 )
-        throw runtime_error( "invalid number of jobs" );
-    log( "Jobs: " + string( argv[1] ) );
+    ostringstream ss;
+    ss << jobs;
+    log( "Jobs: " + ss.str() );
 
     File f( filename, "rb" );
-    log( "Opened file " + filename );
 
     auto zs = make_shared<ZipSource>( f.read() );
 
