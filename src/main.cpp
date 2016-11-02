@@ -50,9 +50,11 @@ int main( int argc, char* argv[] )
 
     File f( filename, "rb" );
 
-    auto zs = make_shared<ZipSource>( f.read() );
+    Buffer::SP buf = make_shared<Buffer>( f.read() );
 
-    Zip z( zs );
+    Zip z( buf );
+    //Zip z2( buf );
+    //Zip z3( buf );
 
     auto count = zip_get_num_entries( z.get(), ZIP_FL_UNCHANGED );
     cout << "Found " << count << " entries:" << endl;

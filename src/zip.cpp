@@ -5,29 +5,21 @@
 using namespace std;
 
 /****************************************************************
- * ZipSource
+ * Zip
  ***************************************************************/
-ZipSource::ZipSource( Buffer&& buf )
-    : b( std::move( buf ) ) {
-    zip_error_t error;
-    if( !(p = zip_source_buffer_create(
-        b.get(), b.size(), 0, &error ) ) ) {
+Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
+    zip_error_t   error;
+    zip_source_t* zs;
+    if( !(zs = zip_source_buffer_create(
+        b->get(), b->size(), 0, &error ) ) ) {
         throw runtime_error(
             "failed to create zip source from buffer" );
     }
-}
-
-void ZipSource::destroyer() {
-    zip_source_close( p );
-}
-
-/****************************************************************
- * Zip
- ***************************************************************/
-Zip::Zip( ZipSource::SP& zs_ ) : zs( zs_ ) {
-    zip_error_t error;
-    if( !(p = zip_open_from_source( zs->get(), ZIP_RDONLY, &error )) )
+    if( !(p = zip_open_from_source( zs, ZIP_RDONLY, &error )) )
         throw runtime_error( "failed to open zip from source" );
+    own = true;
+    // Evidentally zip_t takes ownership of the zip_source_t
+    // and will try to free it, so we don't have to release it.
 }
 
 void Zip::destroyer() {

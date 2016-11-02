@@ -24,6 +24,7 @@ File::File( string const& s, char const* mode ) {
     if( !(p = fopen( s.c_str(), mode ) ) )
         throw runtime_error( "failed to open file " + s
             + " with mode " + mode );
+    own = true;
 }
 
 void File::destroyer() {
@@ -51,6 +52,7 @@ Buffer File::read() {
 Buffer::Buffer( size_t length ) : length( length ) {
     if( !(p = (void*)( new uint8_t[length] )) )
         throw runtime_error( "failed to allocate buffer" );
+    own = true;
 }
 
 void Buffer::destroyer() {

@@ -7,32 +7,16 @@
 #include "utils.hpp"
 
 #include <zip.h>
-#include <memory>
-
-/****************************************************************
- * ZipSource
- ***************************************************************/
-class ZipSource : public PtrRes<zip_source_t, ZipSource> {
-
-    Buffer b;
-
-public:
-    using SP = std::shared_ptr<ZipSource>;
-
-    ZipSource( Buffer&& buffer );
-
-    void destroyer();
-};
 
 /****************************************************************
  * Zip
  ***************************************************************/
 class Zip : public PtrRes<zip_t, Zip> {
 
-    ZipSource::SP zs;
+    Buffer::SP b;
 
 public:
-    Zip( ZipSource::SP& zs );
+    Zip( Buffer::SP& zs );
 
     void destroyer();
 };

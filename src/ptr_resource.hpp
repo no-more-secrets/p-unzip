@@ -11,10 +11,11 @@ class PtrRes {
 protected:
 
     PtrT* p;
+    bool  own;
 
-    void release() { p = NULL; }
+    void release() { own = false; }
 
-    PtrRes() : p( NULL ) {}
+    PtrRes() : p( NULL ), own( false ) {}
 
     PtrRes( PtrRes const& )            = delete;
     PtrRes& operator=( PtrRes const& ) = delete;
@@ -23,12 +24,13 @@ protected:
 public:
 
     PtrRes( PtrRes&& right )
-        : p( std::move( right.p ) ) {
+        : p( std::move( right.p ) )
+        , own( right.own ) {
         right.release();
     }
 
     void destroy() {
-        if( p ) {
+        if( own ) {
             static_cast<Child*>( this )->destroyer();
             release();
         }

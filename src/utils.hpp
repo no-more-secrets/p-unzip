@@ -22,6 +22,8 @@ class Buffer : public PtrRes<void, Buffer> {
     size_t length;
 
 public:
+    typedef std::shared_ptr<Buffer> SP;
+
     Buffer( size_t length );
 
     void destroyer();
