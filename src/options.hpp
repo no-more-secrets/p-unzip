@@ -30,17 +30,17 @@ public:
     std::string const& get();
 };
 
-using OptResult = std::pair<
-                      std::map<char, OptionVal>,
-                      std::vector<std::string>
-                  >;
+using Positional = std::vector<std::string>;
+using Options    = std::map<char, OptionVal>;
+using OptResult  = std::pair<Options, Positional>;
 
 /****************************************************************
  * This does the full parsing of the arguments
  ***************************************************************/
-bool parse( int argc,
-            char** argv,
-            std::set<char>,
-            OptResult& result );
+bool parse( int                   argc,
+            char**                argv,
+            std::set<char> const& options,
+            std::set<char> const& with_value,
+            OptResult&            result );
 
 } // namespace options

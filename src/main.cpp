@@ -13,26 +13,23 @@
 using namespace std;
 
 void usage() {
+    cerr << "p-unzip: multithreaded unzipper." << endl;
     cerr << "Usage: p-unzip [-j N] file.zip" << endl;
     cerr << endl;
-    cerr << "    where `N` is number of threads." << endl;
+    cerr << "    N - number of threads." << endl;
+    exit( 1 );
 }
 
-int main( int argc, char* argv[] )
+void help() {
+    cout << "Help:" << endl;
+    exit( 0 );
+}
+
+int main_( options::Positional positional,
+           options::Options    options )
 {
-    try {
-
-    options::OptResult opt_result;
-    set<char> opts{ 'j' };
-    bool parsed = options::parse( argc-1, argv+1, opts, opt_result );
-
-    auto& positional = opt_result.second;
-    auto& options    = opt_result.first;
-
-    if( !parsed || positional.size() != 1 ) {
-        usage();
-        return 1;
-    }
+    if( options.count( 'h' ) )
+        help();
 
     int jobs = 1;
     if( options.count( 'j' ) ) {
@@ -40,6 +37,9 @@ int main( int argc, char* argv[] )
         if( jobs <= 0 )
             throw runtime_error( "invalid number of jobs" );
     }
+
+    if( positional.size() != 1 )
+        usage();
 
     string filename = positional[0];
     log( "File: " + filename );
@@ -72,6 +72,33 @@ int main( int argc, char* argv[] )
         if( s.valid & ZIP_STAT_MTIME     ) cout << "    mtime:     " << s.mtime     << endl;
         if( s.valid & ZIP_STAT_FLAGS     ) cout << "    flags:     " << s.flags     << endl;
     }
+
+    return 0;
+}
+
+int main( int argc, char* argv[] )
+{
+    set<char> options{ 'j', 'h' };
+    set<char> options_with_value{ 'j' };
+
+    try {
+
+        if( argc == 1 )
+            usage();
+
+        options::OptResult opt_result;
+        bool parsed = options::parse( argc,
+                                      argv,
+                                      options,
+                                      options_with_value,
+                                      opt_result );
+        auto& positional = opt_result.second;
+        auto& options    = opt_result.first;
+
+        if( !parsed )
+            exit( 1 );
+
+        return main_( positional, options );
 
     } catch( exception const& e ) {
         cerr << "exception: " << e.what() << endl;
