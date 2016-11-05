@@ -48,29 +48,22 @@ int main_( options::Positional positional,
     ss << jobs;
     log( "Jobs: " + ss.str() );
 
-    File f( filename, "rb" );
-
-    Buffer::SP buf = make_shared<Buffer>( f.read() );
+    Buffer::SP buf =
+        make_shared<Buffer>( File( filename, "rb" ).read() );
 
     Zip z( buf );
-    //Zip z2( buf );
-    //Zip z3( buf );
 
-    auto count = zip_get_num_entries( z.get(), ZIP_FL_UNCHANGED );
-    cout << "Found " << count << " entries:" << endl;
+    cout << "Found " << z.size() << " entries:" << endl;
 
-    for( auto i = 0; i < count; ++i ) {
+    for( size_t i = 0; i < z.size(); ++i ) {
 
-        zip_stat_t s;
-        if( zip_stat_index( z.get(), i, ZIP_FL_UNCHANGED, &s ) )
-            throw runtime_error( "failed to stat file" );
+        ZipStat s = z[i];
 
-        if( s.valid & ZIP_STAT_INDEX     ) cout << "  index: "       << s.index     << endl;
-        if( s.valid & ZIP_STAT_NAME      ) cout << "    name:      " << s.name      << endl;
-        if( s.valid & ZIP_STAT_SIZE      ) cout << "    size:      " << s.size      << endl;
-        if( s.valid & ZIP_STAT_COMP_SIZE ) cout << "    comp_size: " << s.comp_size << endl;
-        if( s.valid & ZIP_STAT_MTIME     ) cout << "    mtime:     " << s.mtime     << endl;
-        if( s.valid & ZIP_STAT_FLAGS     ) cout << "    flags:     " << s.flags     << endl;
+        cout << "  index: "       << s.index()     << endl;
+        cout << "    name:      " << s.name()      << endl;
+        cout << "    size:      " << s.size()      << endl;
+        cout << "    comp_size: " << s.comp_size() << endl;
+        cout << "    mtime:     " << s.mtime()     << endl;
     }
 
     return 0;
