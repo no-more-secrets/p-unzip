@@ -24,7 +24,7 @@ protected:
 public:
 
     PtrRes( PtrRes&& right )
-        : p( std::move( right.p ) )
+        : p( right.p )
         , own( right.own ) {
         right.release();
     }
@@ -39,6 +39,13 @@ public:
     ~PtrRes() { destroy(); }
 
     PtrT* get() {
+        if( !p )
+            throw std::runtime_error(
+                "attempted to get() reference NULL pointer" );
+        return p;
+    }
+
+    PtrT const* get() const {
         if( !p )
             throw std::runtime_error(
                 "attempted to get() reference NULL pointer" );

@@ -28,7 +28,8 @@ public:
 
     void destroyer();
 
-    size_t size() { return length; }
+    size_t size() const { return length; }
+
 };
 
 /****************************************************************
@@ -36,10 +37,19 @@ public:
  ***************************************************************/
 class File : public PtrRes<FILE, File> {
 
+    std::string mode;
+
 public:
     File( std::string const& s, char const* mode );
 
     void destroyer();
 
+    // Will read the entire contents of the file from the current
+    // File position and will leave the file position at EOF.
     Buffer read();
+
+    // Will write the entire contents of buffer to file starting
+    // from the file's current position.  Will throw if not all
+    // bytes written.
+    void write( Buffer const& buffer );
 };

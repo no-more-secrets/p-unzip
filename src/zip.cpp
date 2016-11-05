@@ -34,6 +34,22 @@ Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
     }
 }
 
+// Create a new buffer of the size necessary to hold the
+// uncompressed contents, then do the uncompression and
+// return the buffer.
+Buffer Zip::extract( size_t idx ) const {
+    Buffer out( at( idx ).size() );
+    extract_in( idx, out );
+    return out;
+}
+
+// Uncompress file into existing buffer.  Throws if the
+// buffer is not big enough.
+void Zip::extract_in( size_t idx, Buffer& buffer ) const {
+    (void)idx;
+    (void)buffer;
+}
+
 // This will release the underlying zip source, but not the
 // buffer from which the zip source was created.  However, when
 // all Zip objects that refer to a certain Buffer go out of
@@ -43,13 +59,8 @@ void Zip::destroyer() {
     zip_close( p );
 }
 
-// This is the size of the vector of cached ZipStats.
-size_t Zip::size() const {
-    return stats.size();
-}
-
 // Access a given element of the archive.
-ZipStat const& Zip::operator[](size_t idx) const {
+ZipStat const& Zip::at(size_t idx) const {
     if( idx >= stats.size() )
         throw runtime_error( "idx out of bounds" );
     return stats[idx];

@@ -12,24 +12,25 @@
 
 using namespace std;
 
-void usage() {
-    cerr << "p-unzip: multithreaded unzipper." << endl;
-    cerr << "Usage: p-unzip [-j N] file.zip" << endl;
-    cerr << endl;
-    cerr << "    N - number of threads." << endl;
-    exit( 1 );
-}
+char const* info =
+R"R(p-unzip: multithreaded unzipper.
+Usage: p-unzip [-j N] file.zip
 
-void help() {
-    cout << "Help:" << endl;
-    exit( 0 );
+    N - number of threads.
+)R";
+
+void usage() {
+    cerr << info;
+    exit( 1 );
 }
 
 int main_( options::Positional positional,
            options::Options    options )
 {
-    if( options.count( 'h' ) )
-        help();
+    if( options.count( 'h' ) ) {
+        usage();
+        exit( 0 );
+    }
 
     int jobs = 1;
     if( options.count( 'j' ) ) {
@@ -38,8 +39,10 @@ int main_( options::Positional positional,
             throw runtime_error( "invalid number of jobs" );
     }
 
-    if( positional.size() != 1 )
+    if( positional.size() != 1 ) {
         usage();
+        exit( 1 );
+    }
 
     string filename = positional[0];
     log( "File: " + filename );
@@ -59,11 +62,16 @@ int main_( options::Positional positional,
 
         ZipStat s = z[i];
 
-        cout << "  index: "       << s.index()     << endl;
-        cout << "    name:      " << s.name()      << endl;
-        cout << "    size:      " << s.size()      << endl;
-        cout << "    comp_size: " << s.comp_size() << endl;
-        cout << "    mtime:     " << s.mtime()     << endl;
+        cout << "  index: "        << s.index()     << endl;
+        cout << "    name:      "  << s.name()      << endl;
+        cout << "    size:      "  << s.size()      << endl;
+        cout << "    comp_size: "  << s.comp_size() << endl;
+        cout << "    mtime:     "  << s.mtime()     << endl;
+        cout << "    unzipping..." << endl;
+
+        Buffer uncompressed( z.extract( i ) );
+
+        File( s.name(), "wb" ).write( uncompressed );
     }
 
     return 0;

@@ -48,12 +48,28 @@ public:
     Zip( Buffer::SP& zs );
 
     // This returns the size of the vector of cached ZipStats.
-    size_t size() const;
+    size_t size() const { return stats.size(); }
 
     // Access the given element of the archive with a zero-based
     // index and return the ZipStat describing it at the time
     // that the zip was originally opened.
-    ZipStat const& operator[](size_t idx) const;
+    ZipStat const& at(size_t idx) const;
+
+    // Access the given element of the archive with a zero-based
+    // index and return the ZipStat describing it at the time
+    // that the zip was originally opened.
+    ZipStat const& operator[](size_t idx) const {
+        return at( idx );
+    }
+
+    // Create a new buffer of the size necessary to hold the
+    // uncompressed contents, then do the uncompression and
+    // return the buffer.
+    Buffer extract( size_t idx ) const;
+
+    // Uncompress file into existing buffer.  Throws if the
+    // buffer is not big enough.
+    void extract_in( size_t idx, Buffer& buffer ) const;
 
     void destroyer();
 
