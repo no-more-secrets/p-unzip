@@ -19,7 +19,7 @@ protected:
 
     PtrRes( PtrRes const& )            = delete;
     PtrRes& operator=( PtrRes const& ) = delete;
-    PtrRes& operator=( PtrRes&& )      = delete;
+    PtrRes& operator=( PtrRes&& right ) = delete;
 
 public:
 
@@ -28,6 +28,15 @@ public:
         , own( right.own ) {
         right.release();
     }
+
+    /*PtrRes& operator=( PtrRes&& right ) {
+        if( this == &right )
+            return *this;
+        destroy();
+        p = right.p;
+        own = right.own;
+        right.release();
+    }*/
 
     void destroy() {
         if( own ) {

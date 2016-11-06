@@ -11,6 +11,7 @@ Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
     // First creat a "zip source" from the raw pointer to the
     // buffer containing the binary data of the zip file.  The
     // zip source will not take ownership of the buffer.
+    // TODO: need to call error APIs to extract error msg
     zip_error_t   error;
     zip_source_t* zs;
     if( !(zs = zip_source_buffer_create(
@@ -46,8 +47,20 @@ Buffer Zip::extract( size_t idx ) const {
 // Uncompress file into existing buffer.  Throws if the
 // buffer is not big enough.
 void Zip::extract_in( size_t idx, Buffer& buffer ) const {
-    (void)idx;
-    (void)buffer;
+    size_t fsize = at( idx ).size();
+    if( fsize > buffer.size() )
+        throw runtime_error( "buffer not large enough for file" );
+    zip_file_t* zf;
+    if( !(zf = zip_fopen_index( p, idx, 0 )) )
+        throw runtime_error( "error opening idx" );
+    // !! Should not throw until zip_fclose is called
+    zip_uint64_t count = zip_fread( zf, buffer.get(), fsize );
+    // !! Close immediately to avoid resource leak.
+    zip_fclose( zf );
+    // If we haven't read a number of bytes equal to the
+    // reported size of the uncompressed file then throw.
+    if( count != fsize )
+        throw runtime_error( "failed to read all bytes in zipped file" );
 }
 
 // This will release the underlying zip source, but not the

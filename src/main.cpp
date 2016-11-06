@@ -9,6 +9,7 @@
 #include <string>
 #include <stdexcept>
 #include <sstream>
+#include <algorithm>
 
 using namespace std;
 
@@ -32,7 +33,7 @@ int main_( options::Positional positional,
         exit( 0 );
     }
 
-    int jobs = 1;
+    size_t jobs = 1;
     if( options.count( 'j' ) ) {
         jobs = atoi( options['j'].get().c_str() );
         if( jobs <= 0 )
@@ -54,24 +55,51 @@ int main_( options::Positional positional,
     Buffer::SP buf =
         make_shared<Buffer>( File( filename, "rb" ).read() );
 
-    Zip z( buf );
+    //////////////////////////////////////////////////////////
 
+    Zip z( buf );
     cout << "Found " << z.size() << " entries:" << endl;
 
-    for( size_t i = 0; i < z.size(); ++i ) {
+    zip_uint64_t max_size = 0;
+    for( size_t i = 0; i < z.size(); ++i )
+        max_size = max( max_size, z[i].size() );
+    cout << "Max uncompressed size: " << max_size << endl;
 
-        ZipStat s = z[i];
+    auto unzip = [jobs, max_size]( Zip&    zip,
+                                   size_t  start,
+                                   size_t& num_written,
+                                   size_t& bytes_written ) {
+        Buffer uncompressed( max_size );
+        for( size_t i = start; i < zip.size(); i += jobs ) {
+            zip.extract_in( start, uncompressed );
+            File( zip[i].name(), "wb" ).write( uncompressed );
+            num_written++;
+            bytes_written += zip[i].size();
+        }
 
-        cout << "  index: "        << s.index()     << endl;
-        cout << "    name:      "  << s.name()      << endl;
-        cout << "    size:      "  << s.size()      << endl;
-        cout << "    comp_size: "  << s.comp_size() << endl;
-        cout << "    mtime:     "  << s.mtime()     << endl;
-        cout << "    unzipping..." << endl;
+    };
 
-        Buffer uncompressed( z.extract( i ) );
+    vector<size_t> counts( jobs, 0 );
+    vector<size_t> bytes( jobs, 0 );
 
-        File( s.name(), "wb" ).write( uncompressed );
+    vector<Zip> zips;
+    for( size_t i = 0; i < jobs; ++i )
+        zips.emplace_back( buf );
+
+    /////////////////////////////////////////////////////////////
+
+    for( size_t i = 0; i < jobs; ++i ) {
+        unzip( zips[i], i, counts[i], bytes[i] );
+        //cout << "    mtime:     "  << s.mtime()     << endl;
+    }
+
+    /////////////////////////////////////////////////////////////
+
+    for( size_t i = 0; i < jobs; ++i ) {
+        cout << "Thread "      << i+1 << ":" << endl;
+        cout << "    files: "  << counts[i] << endl;
+        cout << "    bytes: "  << bytes[i]  << endl;
+        //cout << "    mtime:     "  << s.mtime()     << endl;
     }
 
     return 0;
