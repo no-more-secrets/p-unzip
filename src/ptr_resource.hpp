@@ -1,6 +1,9 @@
 #pragma once
 
+#include "macros.hpp"
+
 #include <stdexcept>
+#include <typeinfo>
 
 /****************************************************************
  * Resource manager for raw pointers
@@ -48,16 +51,12 @@ public:
     ~PtrRes() { destroy(); }
 
     PtrT* get() {
-        if( !p )
-            throw std::runtime_error(
-                "attempted to get() reference NULL pointer" );
+        ERR_IF( !p, "child: " << typeid(Child).name() );
         return p;
     }
 
     PtrT const* get() const {
-        if( !p )
-            throw std::runtime_error(
-                "attempted to get() reference NULL pointer" );
+        ERR_IF( !p, "child: " << typeid(Child).name() );
         return p;
     }
 

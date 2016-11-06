@@ -10,17 +10,8 @@ using namespace std;
 
 namespace options {
 
-/****************************************************************
- * OptionVal: Struct for holding an optional value
- ***************************************************************/
-string const& OptionVal::get() {
-    if( !has_value )
-        throw runtime_error( "OptionVal has no value." );
-    return value;
-}
-
 // Does the string start with the character?
-bool starts_with( string const& s, char c ) {
+static bool starts_with( string const& s, char c ) {
     return s.size() > 0 && s[0] == c;
 }
 
@@ -56,24 +47,21 @@ public:
     bool option_has_value() const {
         // We should not be able to ask this question
         // if this is not an option parameter.
-        if( m_type != Type::OPTION )
-            throw runtime_error("m_type != Type::OPTION" );
+        ERR_IF_( m_type != Type::OPTION );
         return m_option_has_value;
     }
 
     char option() const {
         // We can not get the name of the option if this
         // is not an option.
-        if( m_type != Type::OPTION )
-            throw runtime_error("m_type != Type::OPTION" );
+        ERR_IF_( m_type != Type::OPTION );
         return m_option;
     }
 
     string const& value() const {
         // We cannot get a value if this is an option
         // parameter but does not have a value attached.
-        if( m_type == Type::OPTION && !m_option_has_value )
-            throw runtime_error("m_option_has_value == false" );
+        ERR_IF_( m_type == Type::OPTION && !m_option_has_value );
         return m_value;
     }
 
@@ -87,12 +75,6 @@ private:
 
 };
 
-// Does the given string start with the given character.
-template<typename T>
-bool has_key( set<T> const& s, T const& k ) {
-    return s.find( k ) != s.end();
-}
-
 /****************************************************************
  * Options parser.  Implemented using recursion.
  ***************************************************************/
@@ -100,7 +82,7 @@ bool parse_impl( set<char> const&            options,
                  set<char> const&            with_value,
                  vector<Arg>::const_iterator start,
                  vector<Arg>::const_iterator end,
-                 OptResult&                  res ) {
+                 opt_result&                 res ) {
 
     // If arg list is empty then that's always valid
     if( start == end )
@@ -112,10 +94,10 @@ bool parse_impl( set<char> const&            options,
     // argument.  If so then add it to the list and recurse on
     // the remainder.
     if( arg.type() == Arg::Type::NORMAL )
-        res.second.push_back( arg.value() );
+        res.first.push_back( arg.value() );
     else if( has_key( options, arg.option() ) ) {
         // This is a valid option.
-        OptionVal op_val;
+        Optional<string> op_val;
         // Is this option one that needs a value?
         if( has_key( with_value, arg.option() ) ) {
             string value;
@@ -131,28 +113,28 @@ bool parse_impl( set<char> const&            options,
                 start++;
                 if( start == end ||
                     start->type() == Arg::Type::OPTION ) {
-                    cerr << "option " << arg.option()
-                         << " must take a value." << endl;
+                    cerr << "error: option '" << arg.option()
+                         << "' must take a value." << endl;
                     return false;
                 }
                 value = start->value();
             }
-            op_val = OptionVal( value );
+            op_val = Optional<string>( value );
         }
         else if( arg.option_has_value() ) {
-            cerr << "option " << arg.option()
-                 << " does not take values." << endl;
+            cerr << "error: option '" << arg.option()
+                 << "' does not take values." << endl;
             return false;
         }
         // Looks good, so store the option.  Depending on
         // what happened above, it may or may not have a
         // value inside op_val.
-        res.first[arg.option()] = op_val;
+        res.second[arg.option()] = op_val;
     }
     else {
         // This is an option but not a valid one.
-        cerr << "option " << arg.option()
-             << " is not recognized." << endl;
+        cerr << "error: option '" << arg.option()
+             << "' is not recognized." << endl;
         return false;
     }
     return parse_impl( options, with_value, start+1, end, res );
@@ -164,17 +146,19 @@ bool parse_impl( set<char> const&            options,
  ***************************************************************/
 bool parse( int              argc,
             char**           argv,
-            set<char> const& options,
-            set<char> const& with_value,
-            OptResult&       res ) {
+            set<char> const& options_all,
+            set<char> const& options_with_val,
+            opt_result&      res ) {
 
     vector<Arg> args;
     for( int i = 1; i < argc; ++i )
         args.push_back( Arg( argv[i] ) );
-    if( args.size() != size_t(argc-1) )
-        throw runtime_error( "args.size() != (argc-1)" );
-    return parse_impl(
-        options, with_value, args.begin(), args.end(), res );
+    ERR_IF_( args.size() != size_t(argc-1) );
+    return parse_impl( options_all,
+                       options_with_val,
+                       args.begin(),
+                       args.end(),
+                       res );
 }
 
 } // namespace options

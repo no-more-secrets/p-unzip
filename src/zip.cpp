@@ -14,23 +14,20 @@ Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
     // TODO: need to call error APIs to extract error msg
     zip_error_t   error;
     zip_source_t* zs;
-    if( !(zs = zip_source_buffer_create(
-        b->get(), b->size(), 0, &error ) ) ) {
-        throw runtime_error(
-            "failed to create zip source from buffer" );
-    }
+    zs = zip_source_buffer_create( b->get(), b->size(), 0, &error );
+    ERR_IF( !zs, "failed to create zip source from buffer" );
     // Now create a zip_t object which attaches to (and owns)
     // the zip source.
-    if( !(p = zip_open_from_source( zs, ZIP_RDONLY, &error )) )
-        throw runtime_error( "failed to open zip from source" );
+    p = zip_open_from_source( zs, ZIP_RDONLY, &error );
+    ERR_IF( !p, "failed to open zip from source" );
     own = true;
     // Lastly, count number of files in the archive and get
     // each of their stats and cache them.
     size_t size = zip_get_num_entries( p, ZIP_FL_UNCHANGED );
     for( size_t i = 0; i < size; ++i ) {
         zip_stat_t stat;
-        if( zip_stat_index( p, i, ZIP_FL_UNCHANGED, &stat ) )
-            throw runtime_error( "failed to stat item" );
+        ERR_IF( zip_stat_index( p, i, ZIP_FL_UNCHANGED, &stat ),
+           "failed to stat item" << i );
         stats.emplace_back( stat );
     }
 }
@@ -48,19 +45,16 @@ Buffer Zip::extract( size_t idx ) const {
 // buffer is not big enough.
 void Zip::extract_in( size_t idx, Buffer& buffer ) const {
     size_t fsize = at( idx ).size();
-    if( fsize > buffer.size() )
-        throw runtime_error( "buffer not large enough for file" );
+    ERR_IF_( fsize > buffer.size() );
     zip_file_t* zf;
-    if( !(zf = zip_fopen_index( p, idx, 0 )) )
-        throw runtime_error( "error opening idx" );
+    ERR_IF_( !(zf = zip_fopen_index( p, idx, 0 )) );
     // !! Should not throw until zip_fclose is called
     zip_uint64_t count = zip_fread( zf, buffer.get(), fsize );
     // !! Close immediately to avoid resource leak.
     zip_fclose( zf );
     // If we haven't read a number of bytes equal to the
     // reported size of the uncompressed file then throw.
-    if( count != fsize )
-        throw runtime_error( "failed to read all bytes in zipped file" );
+    ERR_IF_( count != fsize );
 }
 
 // This will release the underlying zip source, but not the
@@ -74,8 +68,7 @@ void Zip::destroyer() {
 
 // Access a given element of the archive.
 ZipStat const& Zip::at(size_t idx) const {
-    if( idx >= stats.size() )
-        throw runtime_error( "idx out of bounds" );
+    ERR_IF_( idx >= stats.size() );
     return stats[idx];
 }
 
@@ -85,30 +78,26 @@ ZipStat const& Zip::at(size_t idx) const {
 // This is the zero-based index within the archive of the
 // element represented by this ZipStat.
 zip_uint64_t ZipStat::index() const {
-    if( stat.valid & ZIP_STAT_INDEX )
-        return stat.index;
-    throw runtime_error( "index not available" );
+    ERR_IF_( !(stat.valid & ZIP_STAT_INDEX) );
+    return stat.index;
 }
 
 // File/folder name of entry.  Folder names end with /
 string ZipStat::name() const {
-    if( stat.valid & ZIP_STAT_NAME )
-        return string( stat.name );
-    throw runtime_error( "name not available" );
+    ERR_IF_( !(stat.valid & ZIP_STAT_NAME) );
+    return string( stat.name );
 }
 
 // Uncompressed size of entry.
 zip_uint64_t ZipStat::size() const {
-    if( stat.valid & ZIP_STAT_SIZE )
-        return stat.size;
-    throw runtime_error( "size not available" );
+    ERR_IF_( !(stat.valid & ZIP_STAT_SIZE) );
+    return stat.size;
 }
 
 // Compressed size of entry.
 zip_uint64_t ZipStat::comp_size() const {
-    if( stat.valid & ZIP_STAT_COMP_SIZE )
-        return stat.comp_size;
-    throw runtime_error( "comp_size not available" );
+    ERR_IF_( !(stat.valid & ZIP_STAT_COMP_SIZE) );
+    return stat.comp_size;
 }
 
 // Last mode time.  This will be rounded to the nearest
@@ -117,8 +106,7 @@ zip_uint64_t ZipStat::comp_size() const {
 // by this function must be interpreted based on the
 // known timezone of the machine that created the zip.
 time_t ZipStat::mtime() const {
-    if( stat.valid & ZIP_STAT_MTIME )
-        return stat.mtime;
-        //return chrono::system_clock::from_time_t( stat.mtime );
-    throw runtime_error( "mtime not available" );
+    ERR_IF_( !(stat.valid & ZIP_STAT_MTIME) );
+    return stat.mtime;
+    //return chrono::system_clock::from_time_t( stat.mtime );
 }

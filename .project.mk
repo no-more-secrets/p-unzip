@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++11
+CXXFLAGS += -std=c++11 -Wfatal-errors
 
 GCC_HOME=/usr/bin
 
@@ -6,7 +6,7 @@ CC  := $(GCC_HOME)/g++
 CXX := $(CC)
 LD  := $(CC)
 
-ENABLE_BIN_FOLDER = 1
+#ENABLE_BIN_FOLDER = 1
 
 ifeq ($(OS),OSX)
     TP_INCLUDES_EXTRA += -I/opt/local/include

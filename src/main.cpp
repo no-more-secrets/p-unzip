@@ -1,69 +1,42 @@
-#include "ptr_resource.hpp"
+#include "options.hpp"
 #include "utils.hpp"
 #include "zip.hpp"
-#include "options.hpp"
 
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <string>
-#include <stdexcept>
-#include <sstream>
 #include <algorithm>
+#include <cstdlib>
+#include <string>
 
 using namespace std;
 
-char const* info =
-R"R(p-unzip: multithreaded unzipper.
-Usage: p-unzip [-j N] file.zip
+// Positional args should always be referred to by these.
+static size_t const ARG_FILE_NAME = 0;
 
-    N - number of threads.
-)R";
-
-void usage() {
-    cerr << info;
-    exit( 1 );
-}
-
-int main_( options::Positional positional,
-           options::Options    options )
+int main_( options::positional positional,
+           options::options    options )
 {
-    if( options.count( 'h' ) ) {
-        usage();
-        exit( 0 );
-    }
-
     size_t jobs = 1;
-    if( options.count( 'j' ) ) {
+    if( has_key( options, 'j' ) )
         jobs = atoi( options['j'].get().c_str() );
-        if( jobs <= 0 )
-            throw runtime_error( "invalid number of jobs" );
-    }
 
-    if( positional.size() != 1 ) {
-        usage();
-        exit( 1 );
-    }
+    ERR_IF( jobs < 1, "invalid number of jobs: " << jobs );
 
-    string filename = positional[0];
-    log( "File: " + filename );
+    string filename = positional[ARG_FILE_NAME];
 
-    ostringstream ss;
-    ss << jobs;
-    log( "Jobs: " + ss.str() );
-
+    bool force = has_key( options, 'f' );
     Buffer::SP buf =
         make_shared<Buffer>( File( filename, "rb" ).read() );
 
-    //////////////////////////////////////////////////////////
-
     Zip z( buf );
-    cout << "Found " << z.size() << " entries:" << endl;
 
     zip_uint64_t max_size = 0;
     for( size_t i = 0; i < z.size(); ++i )
         max_size = max( max_size, z[i].size() );
-    cout << "Max uncompressed size: " << max_size << endl;
+
+    LOG( "file:     " << filename );
+    LOG( "jobs:     " << jobs     );
+    LOG( "force:    " << force    );
+    LOG( "entries:  " << z.size() );
+    LOG( "max size: " << max_size );
 
     auto unzip = [jobs, max_size]( Zip&    zip,
                                    size_t  start,
@@ -96,41 +69,11 @@ int main_( options::Positional positional,
     /////////////////////////////////////////////////////////////
 
     for( size_t i = 0; i < jobs; ++i ) {
-        cout << "Thread "      << i+1 << ":" << endl;
-        cout << "    files: "  << counts[i] << endl;
-        cout << "    bytes: "  << bytes[i]  << endl;
+        LOG( "Thread "      << i+1 << ":" );
+        LOG( "    files: "  << counts[i]  );
+        LOG( "    bytes: "  << bytes[i]   );
         //cout << "    mtime:     "  << s.mtime()     << endl;
     }
 
     return 0;
-}
-
-int main( int argc, char* argv[] )
-{
-    set<char> options{ 'j', 'h' };
-    set<char> options_with_value{ 'j' };
-
-    try {
-
-        if( argc == 1 )
-            usage();
-
-        options::OptResult opt_result;
-        bool parsed = options::parse( argc,
-                                      argv,
-                                      options,
-                                      options_with_value,
-                                      opt_result );
-        auto& positional = opt_result.second;
-        auto& options    = opt_result.first;
-
-        if( !parsed )
-            exit( 1 );
-
-        return main_( positional, options );
-
-    } catch( exception const& e ) {
-        cerr << "exception: " << e.what() << endl;
-        return 1;
-    }
 }

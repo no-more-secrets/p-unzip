@@ -1,7 +1,9 @@
 /****************************************************************
- * General utilities
+ * Command line options parsing engine
  ***************************************************************/
 #pragma once
+
+#include "utils.hpp"
 
 #include <utility>
 #include <map>
@@ -11,36 +13,17 @@
 
 namespace options {
 
-/****************************************************************
- * OptionVal: Struct for holding an optional value
- ***************************************************************/
-struct OptionVal {
-
-    bool has_value;
-    std::string value;
-
-public:
-    OptionVal() : has_value( false ) {}
-
-    OptionVal( std::string const& s )
-        : has_value( true )
-        , value( s )
-    {}
-
-    std::string const& get();
-};
-
-using Positional = std::vector<std::string>;
-using Options    = std::map<char, OptionVal>;
-using OptResult  = std::pair<Options, Positional>;
+using positional = std::vector<std::string>;
+using options    = std::map<char, Optional<std::string>>;
+using opt_result = std::pair<positional, options>;
 
 /****************************************************************
  * This does the full parsing of the arguments
  ***************************************************************/
 bool parse( int                   argc,
             char**                argv,
-            std::set<char> const& options,
-            std::set<char> const& with_value,
-            OptResult&            result );
+            std::set<char> const& options_all,
+            std::set<char> const& options_with_val,
+            opt_result&           result );
 
 } // namespace options

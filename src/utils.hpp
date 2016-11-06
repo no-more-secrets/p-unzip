@@ -4,15 +4,20 @@
 
 #pragma once
 
+#include "macros.hpp"
 #include "ptr_resource.hpp"
 
 #include <string>
 #include <memory>
 
 /****************************************************************
- * Logging
+ * Convenience methods
  ***************************************************************/
-void log( std::string const& s );
+// Does the set contain the given key.
+template<typename ContainerT, typename KeyT>
+static bool has_key( ContainerT const& s, KeyT const& k ) {
+    return s.find( k ) != s.end();
+}
 
 /****************************************************************
  * Resource manager for raw buffers
@@ -52,4 +57,32 @@ public:
     // from the file's current position.  Will throw if not all
     // bytes written.
     void write( Buffer const& buffer );
+};
+
+/****************************************************************
+ * Optional: Struct for holding a value that either is there or
+ * isn't.  This could be replaced with std::optional when we
+ * have C++17 compilers available.
+ ***************************************************************/
+template<typename T>
+struct Optional {
+
+    bool has_value;
+    T value;
+
+public:
+    Optional() : has_value( false ) {}
+
+    // Perfect forwarding
+    template<typename V>
+    explicit Optional( V&& s )
+        : has_value( true )
+        , value( std::forward<V>( s ) )
+    {}
+
+    T const& get() {
+        ERR_IF( !has_value, "Optional has no value." );
+        return value;
+    }
+
 };
