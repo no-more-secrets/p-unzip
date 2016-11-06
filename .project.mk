@@ -1,4 +1,5 @@
-CXXFLAGS += -std=c++11 -Wfatal-errors
+CXXFLAGS += -std=c++11 -Wfatal-errors -pthread
+LDFLAGS  += -pthread
 
 GCC_HOME=/usr/bin
 

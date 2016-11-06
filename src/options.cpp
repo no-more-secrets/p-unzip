@@ -10,11 +10,6 @@ using namespace std;
 
 namespace options {
 
-// Does the string start with the character?
-static bool starts_with( string const& s, char c ) {
-    return s.size() > 0 && s[0] == c;
-}
-
 /****************************************************************
  * Arg: container for holder a parameter a labeling it as either
  * an option or non-option (option means starts with a dash).
@@ -47,21 +42,21 @@ public:
     bool option_has_value() const {
         // We should not be able to ask this question
         // if this is not an option parameter.
-        ERR_IF_( m_type != Type::OPTION );
+        FAIL_( m_type != Type::OPTION );
         return m_option_has_value;
     }
 
     char option() const {
         // We can not get the name of the option if this
         // is not an option.
-        ERR_IF_( m_type != Type::OPTION );
+        FAIL_( m_type != Type::OPTION );
         return m_option;
     }
 
     string const& value() const {
         // We cannot get a value if this is an option
         // parameter but does not have a value attached.
-        ERR_IF_( m_type == Type::OPTION && !m_option_has_value );
+        FAIL_( m_type == Type::OPTION && !m_option_has_value );
         return m_value;
     }
 
@@ -153,7 +148,7 @@ bool parse( int              argc,
     vector<Arg> args;
     for( int i = 1; i < argc; ++i )
         args.push_back( Arg( argv[i] ) );
-    ERR_IF_( args.size() != size_t(argc-1) );
+    FAIL_( args.size() != size_t(argc-1) );
     return parse_impl( options_all,
                        options_with_val,
                        args.begin(),

@@ -7,12 +7,12 @@
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-// ERR_IF is the converse of assert.  It will throw if the
+// FAIL is the converse of assert.  It will throw if the
 // condition passed to it evaluates to true.
-#define ERR_IF( a, b )                        \
+#define FAIL( a, b )                        \
     if( (a) ) {                               \
         std::ostringstream out;               \
-        out << "assertion:" __FILE__ ":";     \
+        out << "error:" __FILE__ ":";         \
         out << TOSTRING(__LINE__) ": " << #a; \
         std::ostringstream out_msg;           \
         out_msg << b;                         \
@@ -21,7 +21,7 @@
         throw std::logic_error( out.str() );  \
     }
 
-#define ERR_IF_( a ) ERR_IF( a, "" )
+#define FAIL_( a ) FAIL( a, "" )
 
 // Braces to avoid variable name conflicts.
 #define LOG( a )                        \

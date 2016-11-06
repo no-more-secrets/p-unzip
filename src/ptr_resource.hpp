@@ -51,12 +51,12 @@ public:
     ~PtrRes() { destroy(); }
 
     PtrT* get() {
-        ERR_IF( !p, "child: " << typeid(Child).name() );
+        FAIL( !p, "child: " << typeid(Child).name() );
         return p;
     }
 
     PtrT const* get() const {
-        ERR_IF( !p, "child: " << typeid(Child).name() );
+        FAIL( !p, "child: " << typeid(Child).name() );
         return p;
     }
 

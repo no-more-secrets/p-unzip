@@ -31,6 +31,9 @@ public:
     // by this function must be interpreted based on the
     // known timezone of the machine that created the zip.
     time_t       mtime()     const;
+    // Will return true if the entry represents a folder,
+    // which is if the name ends in a forward slash.
+    bool         is_folder() const;
 
     ZipStat( zip_stat_t stat ) : stat(stat) {}
 
@@ -70,6 +73,14 @@ public:
     // Uncompress file into existing buffer.  Throws if the
     // buffer is not big enough.
     void extract_in( size_t idx, Buffer& buffer ) const;
+
+    typedef std::vector<ZipStat>::const_iterator
+            const_iterator;
+
+    // These are to support range-based for, and basically
+    // just exposed the iteration properties of the vector.
+    const_iterator begin() { return stats.begin(); }
+    const_iterator end()   { return stats.end();   }
 
     void destroyer();
 

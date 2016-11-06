@@ -11,7 +11,7 @@ static char const* info =
     "    N - number of threads."         "\n";
 
 // Options that do not take a value
-static auto options_no_val   = { 'h', 'f' };
+static auto options_no_val   = { 'h' };
 // Options that must take a value
 static auto options_val      = { 'j' };
 
