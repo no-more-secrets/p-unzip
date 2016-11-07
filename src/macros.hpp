@@ -30,3 +30,12 @@
         out << a;                       \
         cerr << out.str() << std::endl; \
     }
+
+#define TRY try {
+
+#define CATCH_ALL                        \
+    } catch( std::exception const& e ) { \
+        LOG( e.what() );                 \
+    } catch( ... ) {                     \
+        LOG( "unknown error" );          \
+    }

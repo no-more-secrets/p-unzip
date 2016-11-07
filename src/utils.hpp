@@ -29,6 +29,57 @@ inline bool ends_with( std::string const& s, char c ) {
     return s.size() > 0 && s[s.size()-1] == c;
 }
 
+// This functino will find the maximum over an iterable given a
+// key function.  The key function will be applied to each
+// element of the iterable to yield a key, then the keys will be
+// compared with the < operator to find the maximum.  The return
+// value will be value of the iterable whose key was found to
+// be maximum (but not the value of that key itself).
+template<typename It, typename KeyF>
+auto maximum( It start, It end, KeyF f ) -> decltype( *start ) {
+    using elem_type = decltype( *start );
+    auto cmp = [&f]( elem_type const& l, elem_type const& r ) {
+        return f( l ) < f( r );
+    };
+    auto max_iter = max_element( start, end, cmp );
+    return *max_iter;
+}
+
+/****************************************************************
+ * Range class for turning pairs of iterators into iterables.
+ * The future ranges library will probably do this better.  At
+ * the moment this will only work for random access iterators
+ * because of the size().
+ ***************************************************************/
+template<typename T>
+class Range {
+
+public:
+    explicit Range( T begin, T end ) : begin_( begin )
+                                     , end_( end ) {}
+
+    // Should return these iterators by value so that the
+    // caller doesn't change them.
+    T begin() const { return begin_; }
+    T end()   const { return end_;   }
+
+    // Will always return a positive size.
+    size_t size() const {
+        auto s = end_ - begin_;
+        return (s >= 0) ? s : -s;
+    }
+
+private:
+    T begin_;
+    T end_;
+
+};
+
+template<typename T>
+Range<T> make_range( T begin, T end ) {
+    return Range<T>( begin, end );
+}
+
 /****************************************************************
  * Resource manager for raw buffers
  ***************************************************************/
@@ -90,7 +141,7 @@ public:
         , value( std::forward<V>( s ) )
     {}
 
-    T const& get() {
+    T const& get() const {
         FAIL( !has_value, "Optional has no value." );
         return value;
     }

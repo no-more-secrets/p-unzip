@@ -33,3 +33,6 @@
 *.zip
 /src/p-unzip
 /Makefile
+
+# vim
+*.swp

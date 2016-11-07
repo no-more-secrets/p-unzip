@@ -21,10 +21,7 @@ File::File( string const& s, char const* m ) : mode( m ) {
     own = true;
 }
 
-void File::destroyer() {
-    LOG( "closing file" );
-    fclose( p );
-}
+void File::destroyer() { fclose( p ); }
 
 // Will read the entire contents of the file from the current
 // File position and will leave the file position at EOF.
@@ -60,6 +57,5 @@ Buffer::Buffer( size_t length ) : length( length ) {
 }
 
 void Buffer::destroyer() {
-    LOG( "releasing buffer" );
     delete[] (uint8_t*)( p );
 }
