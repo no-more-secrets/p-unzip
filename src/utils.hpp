@@ -42,6 +42,12 @@ auto maximum( It start, It end, KeyF f ) -> decltype( *start ) {
         return f( l ) < f( r );
     };
     auto max_iter = max_element( start, end, cmp );
+    // If for some reason we do not find a maximum element (such
+    // as in the case that the input list is empty) then we must
+    // fail because the function signature requires us to return
+    // a value of the iterable which, in that case, we would not
+    // have.
+    FAIL_( max_iter == end );
     return *max_iter;
 }
 
@@ -91,6 +97,14 @@ public:
     typedef std::shared_ptr<Buffer> SP;
 
     Buffer( size_t length );
+
+    // This is for VS 2013 which does not supply implicite
+    // move constructors (which, if it did, should be identical
+    // to this one below).
+    Buffer( Buffer&& from )
+        : PtrRes<void, Buffer>( std::move( from ) )
+        , length( from.length )
+    {}
 
     void destroyer();
 
