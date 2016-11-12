@@ -1,3 +1,6 @@
+/****************************************************************
+ * Resource manager for raw pointers
+ ***************************************************************/
 #pragma once
 
 #include "macros.hpp"
@@ -5,9 +8,6 @@
 #include <stdexcept>
 #include <typeinfo>
 
-/****************************************************************
- * Resource manager for raw pointers
- ***************************************************************/
 template<typename PtrT, typename Child>
 class PtrRes {
 

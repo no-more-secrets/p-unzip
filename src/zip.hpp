@@ -3,16 +3,18 @@
  ***************************************************************/
 #pragma once
 
+#include "fs.hpp"
 #include "ptr_resource.hpp"
 #include "utils.hpp"
 
+#include <time.h>
 #include <vector>
 #include <zip.h>
-#include <time.h>
 
 /****************************************************************
  * ZipStat
  ***************************************************************/
+// TODO: do the zip_stat_t objects need to be released?
 class ZipStat {
 
 public:
@@ -34,6 +36,10 @@ public:
     // Will return true if the entry represents a folder,
     // which is if the name ends in a forward slash.
     bool         is_folder() const;
+    // If the entry is a folder then it will return the name
+    // in the entry itself, otherwise it will strip off the
+    // filename and return the parent folders.
+    FilePath     folder()    const;
 
     ZipStat( zip_stat_t stat ) : stat(stat) {}
 

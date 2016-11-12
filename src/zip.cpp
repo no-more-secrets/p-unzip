@@ -116,3 +116,13 @@ time_t ZipStat::mtime() const {
 bool ZipStat::is_folder() const {
     return ends_with( name(), '/' );
 }
+
+// If the entry is a folder then it will return the name
+// in the entry itself, otherwise it will strip off the
+// filename and return the parent folders.
+FilePath ZipStat::folder() const {
+    FilePath res( name() );
+    if( !is_folder() )
+        res = std::move( res.dirname() );
+    return res;
+}

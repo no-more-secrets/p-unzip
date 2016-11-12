@@ -8,14 +8,16 @@
  * the archive to the threads in order to take advantage of the
  * opportunity for parallelism while unzipping an archive.
  ***************************************************************/
+#include "fs.hpp"
 #include "options.hpp"
 #include "utils.hpp"
 #include "zip.hpp"
 
 #include <algorithm>
-#include <cstdlib>
-#include <string>
 #include <array>
+#include <cstdlib>
+#include <numeric>
+#include <string>
 #include <thread>
 
 using namespace std;
@@ -59,7 +61,7 @@ void unzip( size_t                thread_idx, // input
         // a folder name (i.e., ending in forward slash)
         // since those should have already been filtered out
         // and pre-created.
-        string const& name = zip[idx].name();
+        string name( zip[idx].name() );
         // Get size of the uncompressed data of entry.
         size_t size = zip[idx].size();
         // This logging might be turned off since it is probably
@@ -68,7 +70,7 @@ void unzip( size_t                thread_idx, // input
         zip.extract_in( idx, uncompressed );
         // Enclose in a scope to make sure the file gets close
         // immediately after.
-        { File( name, "wb" ) .write( uncompressed, size ); }
+        File( name, "wb" ).write( uncompressed, size );
         // For auditing / sanity checking purposes.
         files++; bytes += size;
     }
@@ -147,24 +149,14 @@ int main_( options::positional positional,
     // threads then we would likely have race conditions and
     // write conflicts.  So this way, when the worker threads
     // start, all of the necessary folders are already there.
-
-    // Now we need to precreate all of the folders.  In order to
-    // avoid hitting the file system too many times we will use
-    // a set to eliminate redundant checks.  This set could hold
-    // any combination of folders and their parents/children,
-    // such as A, A/B, A/B/C, A/B/C/D, some of the above,
-    // or all of the above.
-    set<fs::FilePath> all_folders;
-    // First we will gather all the folder names that are
-    // mentioned in the archive either explicitly through
-    // folder entries or implicitely as the paths to files.
-    // We put them into a set to eliminate duplicates, of which
-    // there will probably be many.
-    for( zs : stats )
-        all_folders.insert( FilePath( zs.folder_name() ) );
+    // First, we will gather all the folder names that are
+    // mentioned both in the archive explicitly through folder
+    // entries or implicitely as the paths to files.
+    vector<FilePath> fps;
+    for( auto const& zs : stats )
+        fps.push_back( zs.folder() );
     // Now we ensure that each one exists.
-    for( fp : all_folders )
-        mkdir_p( fp );
+    mkdirs_p( fps );
 
     /************************************************************
      * Prepare data structures for the threads

@@ -2,6 +2,8 @@
  * Application-specific data describing the kinds of command line
  * arguments and flags that are expected/allowed/required.
  ***************************************************************/
+#pragma once
+
 namespace usage {
 
 static char const* info =
