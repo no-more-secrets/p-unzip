@@ -230,6 +230,7 @@ int main_( options::positional positional,
     LOGP( "entries",  z.size()       );
     LOGP( "files",    files.size()   );
     LOGP( "folders",  folders.size() );
+    LOGP( "strategy", strategy       );
     LOGP( "max size", max_size << " (" <<
           human_bytes( max_size ) << ")" );
 
