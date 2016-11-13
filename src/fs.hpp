@@ -3,8 +3,33 @@
  ***************************************************************/
 #pragma once
 
+#include "ptr_resource.hpp"
+#include "utils.hpp"
+
 #include <string>
 #include <vector>
+
+/****************************************************************
+ * Resource manager for C FILE handles
+ ***************************************************************/
+class File : public PtrRes<FILE, File> {
+
+    std::string mode;
+
+public:
+    File( std::string const& s, char const* mode );
+
+    void destroyer();
+
+    // Will read the entire contents of the file from the current
+    // File position and will leave the file position at EOF.
+    Buffer read();
+
+    // Will write `count` bytes of buffer to file starting
+    // from the file's current position.  Will throw if not all
+    // bytes written.
+    void write( Buffer const& buffer, size_t count );
+};
 
 /****************************************************************
  * FilePath
@@ -64,27 +89,3 @@ void mkdir_p( FilePath const& path );
  * the list.  Implementation is efficient in that it will use a
  * a cache to avoid redundant calls to the filesystem. */
 void mkdirs_p( std::vector<FilePath> const& paths );
-
-/****************************************************************
- * Functions that require platform-specific implementations
- ***************************************************************/
-namespace fs {
-
-/* A place for holding results of a file system stat which will
- * be platform independent.  If the `exists` field is false then
- * all other fields are undefined. */
-struct Stat {
-    bool exists;
-    bool is_folder;
-};
-
-/* Fills out a Stat structure with info about path.  Note that
- * this will not throw if the path does not exist, it will
- * simply set the appropriate flag in the structure. */
-Stat stat( char const* path );
-
-/* Create folder and fail if it already exists or if one of
- * the parents in the path does not exist. */
-void create_folder( char const* path );
-
-} // namespace fs

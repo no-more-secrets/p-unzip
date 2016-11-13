@@ -168,28 +168,6 @@ public:
 };
 
 /****************************************************************
- * Resource manager for C FILE handles
- ***************************************************************/
-class File : public PtrRes<FILE, File> {
-
-    std::string mode;
-
-public:
-    File( std::string const& s, char const* mode );
-
-    void destroyer();
-
-    // Will read the entire contents of the file from the current
-    // File position and will leave the file position at EOF.
-    Buffer read();
-
-    // Will write `count` bytes of buffer to file starting
-    // from the file's current position.  Will throw if not all
-    // bytes written.
-    void write( Buffer const& buffer, size_t count );
-};
-
-/****************************************************************
  * Optional: Struct for holding a value that either is there or
  * isn't.  This could be replaced with std::optional when we
  * have C++17 compilers available.

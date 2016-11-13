@@ -10,12 +10,103 @@
 #include <set>
 #include <algorithm>
 
-#include <sys/stat.h>
-
 using namespace std;
 
 /****************************************************************
- * FileSystem class
+ * Functions that require platform-specific implementations.
+ ***************************************************************/
+#if PLATFORM == Linux || PLATFORM == OSX
+#    include <sys/stat.h>
+#elif PLATFORM == WIN
+#    error "Windows not supported yet."
+#endif
+
+namespace {
+
+/* Holder for file info in a platform-independent format. */
+struct Stat {
+    bool exists;
+    bool is_folder;
+};
+
+/* Return a platform-independent structure that will give info
+ * about the supplied path.  Note that if the returned structure
+ * has exists==false then all other fields are undefined. */
+Stat stat( char const* path ) {
+    Stat res;
+#if PLATFORM == Linux || PLATFORM == OSX
+    struct stat buf; // The real posix one
+    auto ret = ::stat( path, &buf );
+    if( ret != 0 ) {
+        ret = errno;
+        FAIL( ret != ENOENT, "stat encountered an error other "
+            "than ENOENT: " << ret );
+        res.exists = false;
+        return res;
+    }
+    res.exists = true;
+    res.is_folder = bool( S_ISDIR( buf.st_mode ) );
+#elif PLATFORM == WIN
+#    error "Windows not supported yet."
+#endif
+    return res;
+}
+
+/* Create folder and fail if it already exists or if one of
+ * the parents in the path does not exist. */
+void create_folder( char const* path ) {
+#if PLATFORM == Linux || PLATFORM == OSX
+    auto mode = S_IRUSR | S_IWUSR | S_IXUSR |
+                S_IRGRP |           S_IXGRP |
+                S_IROTH |           S_IXOTH;
+    FAIL_( mkdir( path, mode ) );
+#elif PLATFORM == WIN
+#    error "Windows not supported yet."
+#endif
+}
+
+} // namespace
+
+/****************************************************************
+ * File
+ ***************************************************************/
+File::File( string const& s, char const* m ) : mode( m ) {
+    FAIL( mode != "rb" && mode != "wb",
+        "unrecognized mode " << mode );
+    p = fopen( s.c_str(), m );
+    FAIL( !p, "failed to open " << s << " with mode " << mode );
+    own = true;
+}
+
+void File::destroyer() { fclose( p ); }
+
+// Will read the entire contents of the file from the current
+// File position and will leave the file position at EOF.
+Buffer File::read() {
+    FAIL_( fseek( p, 0, SEEK_END ) != 0 );
+    size_t length = ftell( p );
+    rewind( p );
+
+    Buffer buffer( length );
+
+    auto length_read = fread( buffer.get(), 1, length, p );
+    FAIL_( length != length_read );
+
+    return buffer;
+}
+
+// Will write the entire contents of buffer to file starting
+// from the file's current position.  Will throw if not all
+// bytes written.
+void File::write( Buffer const& buffer, size_t count ) {
+    FAIL( mode != "wb", "attempted write in mode " << mode );
+    FAIL_( count > buffer.size() );
+    size_t written = fwrite( buffer.get(), 1, count, p );
+    FAIL_( written != count );
+}
+
+/****************************************************************
+ * FilePath class
  ***************************************************************/
 /* Here we will basically split the path at the forward slashes
  * and store each component in the m_components vector.  We will
@@ -97,12 +188,12 @@ void mkdir_p( set<FilePath>& cache, FilePath const& path ) {
     cache.insert( path );
     string s_path( path.str() );
     char const* c_path  = s_path.c_str();
-    fs::Stat info( fs::stat( c_path ) );
+    Stat info( stat( c_path ) );
     if( info.exists && info.is_folder )
         return;
     FAIL( info.exists,
         "Path " << s_path << " exists but is not a folder." );
-    fs::create_folder( c_path );
+    create_folder( c_path );
 }
 
 /* Create folder and all parents, and do not fail if it already
@@ -122,36 +213,3 @@ void mkdirs_p( std::vector<FilePath> const& paths ) {
     for( auto const& path : paths )
         mkdir_p( cache, path );
 }
-
-/* Functions that require platform-specific implementations. */
-namespace fs {
-
-/* Return a platform-independent structure that will give info
- * about the supplied path.  Note that if the returned structure
- * has exists==false then all other fields are undefined. */
-Stat stat( char const* path ) {
-    Stat res;
-    struct stat buf; // The real posix one
-    auto ret = ::stat( path, &buf );
-    if( ret != 0 ) {
-        ret = errno;
-        FAIL( ret != ENOENT, "stat encountered an error other "
-            "than ENOENT: " << ret );
-        res.exists = false;
-        return res;
-    }
-    res.exists = true;
-    res.is_folder = bool( S_ISDIR( buf.st_mode ) );
-    return res;
-}
-
-/* Create folder and fail if it already exists or if one of
- * the parents in the path does not exist. */
-void create_folder( char const* path ) {
-    auto mode = S_IRUSR | S_IWUSR | S_IXUSR |
-                S_IRGRP |           S_IXGRP |
-                S_IROTH |           S_IXOTH;
-    FAIL_( mkdir( path, mode ) );
-}
-
-} // namespace fs

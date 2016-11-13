@@ -8,6 +8,7 @@
  * the archive to the threads in order to take advantage of the
  * opportunity for parallelism while unzipping an archive.
  ***************************************************************/
+#include "config.hpp"
 #include "distribution.hpp"
 #include "fs.hpp"
 #include "options.hpp"
@@ -27,11 +28,6 @@ using namespace std;
 
 // Positional args should always be referred to by these.
 size_t const ARG_FILE_NAME = 0;
-// The maximum value that the `-j` parameter can take.
-size_t const MAX_JOBS      = 64;
-// This is the default distribution strategy to use if the
-// user does not specify on the commandline.
-string const& default_dist = "cyclic";
 
 /****************************************************************
  * This is the function that will be given to each of the thread
