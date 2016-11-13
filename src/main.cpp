@@ -8,6 +8,7 @@
  * the archive to the threads in order to take advantage of the
  * opportunity for parallelism while unzipping an archive.
  ***************************************************************/
+#include "distribution.hpp"
 #include "fs.hpp"
 #include "options.hpp"
 #include "utils.hpp"
@@ -28,6 +29,9 @@ using namespace std;
 size_t const ARG_FILE_NAME = 0;
 // The maximum value that the `-j` parameter can take.
 size_t const MAX_JOBS      = 16;
+// This is the default distribution strategy to use if the
+// user does not specify on the commandline.
+string const& default_dist = "cyclic";
 
 /****************************************************************
  * This is the function that will be given to each of the thread
@@ -162,15 +166,30 @@ int main_( options::positional positional,
     watch.stop( "folders" );
 
     /************************************************************
-     * Prepare data structures for the threads
+     * Distribution of files to the threads
      ************************************************************/
-    // Here we need to distribute the non-folder elements evenly
-    // among the jobs.
-    vector<vector<size_t>> thread_idxs( jobs );
-    size_t count = 0;
-    for( auto& zs : files )
-        thread_idxs[count++ % jobs].push_back( zs.index() );
+    // See if the user has specified a distribution strategy.
+    string strategy = has_key( options, 'd' ) ? options['d'].get()
+                                              : default_dist;
+    map<string, distribution_t> distribute;
+    // Map each strategy name to a function that will carry out
+    // the action.
+    distribute["cyclic"] = distribution_cyclic;
+    distribute["sliced"] = distribution_sliced;
+    distribute["folder"] = distribution_folder;
+    distribute["bytes"]  = distribution_bytes;
+    FAIL( !has_key( distribute, strategy ),
+        "strategy " << strategy << " is invalid." );
+    // Do the distribution.  The result should be a vector of
+    // length equal to the number of jobs.  Each element should
+    // itself be a vector if indexs representing files assigned
+    // to that thread for extraction.
+    auto thread_idxs = distribute[strategy]( jobs, files );
+    FAIL_( thread_idxs.size() != jobs );
 
+    /************************************************************
+     * Prepare data structures for threads
+     ************************************************************/
     // These will be populated by the threads as the work and
     // and then checked at the end as a sanity check.
     vector<size_t> files_count( jobs, 0 );
