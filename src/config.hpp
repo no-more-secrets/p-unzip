@@ -28,11 +28,20 @@
 #endif
 #endif
 
+// This is for convenience when small bits of code depend on
+// platform.  The first argument will be used if we are on a
+// posix system, and the second otherwise.
+#ifdef POSIX
+#    define OS_SWITCH( a, b ) a
+#elif PLATFORM == WIN
+#    define OS_SWITCH( a, b ) b
+#endif
+
 /****************************************************************
  * Compile-time program parameters
  ***************************************************************/
 // The maximum value that the `-j` parameter can take.
-size_t const MAX_JOBS    = 64;
+constexpr size_t MAX_JOBS = 64;
 // This is the default distribution strategy to use if the
 // user does not specify on the commandline.
-char const* default_dist = "cyclic";
+constexpr char const* default_dist = "cyclic";

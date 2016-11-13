@@ -3,10 +3,10 @@
  *
  * author:  David P. Sicilia
  *
- * This program will take a zip file as input a zip file and a
- * number of threads and it will evenly distribute the files in
- * the archive to the threads in order to take advantage of the
- * opportunity for parallelism while unzipping an archive.
+ * This program will take a zip file as input and a number of
+ * threads and it will distribute the files in the archive among
+ * the threads in the specified way in order to take advantage of
+ * the opportunity for parallelism while unzipping an archive.
  ***************************************************************/
 #include "config.hpp"
 #include "distribution.hpp"
@@ -206,7 +206,7 @@ int main_( options::positional positional,
     FAIL_( thread_idxs.size() != jobs );
 
     /************************************************************
-     * Prepare data structures for threads
+     * Start multithreaded unzip
      ************************************************************/
     // These will be populated by the threads as the work and
     // and then checked at the end as a sanity check.
@@ -219,9 +219,6 @@ int main_( options::positional positional,
 
     vector<thread> threads( jobs );
 
-    /************************************************************
-     * Start multithreading
-     ************************************************************/
     watch.start( "unzip" );
     for( size_t i = 0; i < jobs; ++i )
         threads[i] = thread( unzip,

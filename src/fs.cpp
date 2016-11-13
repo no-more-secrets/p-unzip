@@ -2,6 +2,7 @@
  * File system related functionality.  Both high-level methods
  * as well as platform-dependent function calls.
  ***************************************************************/
+#include "config.hpp"
 #include "macros.hpp"
 #include "fs.hpp"
 #include "utils.hpp"
@@ -15,11 +16,14 @@ using namespace std;
 /****************************************************************
  * Functions that require platform-specific implementations.
  ***************************************************************/
-#if PLATFORM == Linux || PLATFORM == OSX
-#    include <sys/stat.h>
-#elif PLATFORM == WIN
-#    error "Windows not supported yet."
+#ifndef POSIX
+#   include <Windows.h> // TODO: Check if these are both needed
+#   include <FileAPI.h>
 #endif
+
+// Apparently these work on Windows as well as posix.
+#include <sys/types.h>
+#include <sys/stat.h>
 
 namespace {
 
@@ -34,9 +38,9 @@ struct Stat {
  * has exists==false then all other fields are undefined. */
 Stat stat( char const* path ) {
     Stat res;
-#if PLATFORM == Linux || PLATFORM == OSX
-    struct stat buf; // The real posix one
-    auto ret = ::stat( path, &buf );
+    // The real OS-specific structure.
+    struct OS_SWITCH( stat, _stat ) buf;
+    auto ret = ::OS_SWITCH( stat, _stat )( path, &buf );
     if( ret != 0 ) {
         ret = errno;
         FAIL( ret != ENOENT, "stat encountered an error other "
@@ -45,23 +49,23 @@ Stat stat( char const* path ) {
         return res;
     }
     res.exists = true;
-    res.is_folder = bool( S_ISDIR( buf.st_mode ) );
-#elif PLATFORM == WIN
-#    error "Windows not supported yet."
-#endif
+    res.is_folder = bool(
+        buf.st_mode & OS_SWITCH( S_IFDIR, _S_IFDIR ) );
     return res;
 }
 
 /* Create folder and fail if it already exists or if one of
  * the parents in the path does not exist. */
 void create_folder( char const* path ) {
-#if PLATFORM == Linux || PLATFORM == OSX
+#ifdef POSIX
     auto mode = S_IRUSR | S_IWUSR | S_IXUSR |
                 S_IRGRP |           S_IXGRP |
                 S_IROTH |           S_IXOTH;
-    FAIL_( mkdir( path, mode ) );
-#elif PLATFORM == WIN
-#    error "Windows not supported yet."
+    FAIL( mkdir( path, mode ),
+        "create folder failed on path: " << path );
+#else
+    FAIL( !CreateDirectory( path, NULL),
+        "create folder failed on path: " << path );
 #endif
 }
 
