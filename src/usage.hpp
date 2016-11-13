@@ -11,7 +11,11 @@ static char const* info =
     "Usage: p-unzip [options] file.zip"               "\n"
     ""                                                "\n"
     "   -h          : show usage and exit"            "\n"
-    "   -j N        : use N threads"                  "\n"
+    "   -j N        : use N threads.  In addition to" "\n"
+    "                 a numerical value, N can be"    "\n"
+    "                 one of: { MAX, OPT }.  MAX is " "\n"
+    "                 max threads available, OPT is " "\n"
+    "                 optimal number for this system" "\n"
     "   -d strategy : specify distribution strategy"  "\n"
     "                 cyclic|sliced|folder|bytes"     "\n"
     "                 Default is cyclic."             "\n";

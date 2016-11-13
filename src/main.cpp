@@ -28,7 +28,7 @@ using namespace std;
 // Positional args should always be referred to by these.
 size_t const ARG_FILE_NAME = 0;
 // The maximum value that the `-j` parameter can take.
-size_t const MAX_JOBS      = 16;
+size_t const MAX_JOBS      = 64;
 // This is the default distribution strategy to use if the
 // user does not specify on the commandline.
 string const& default_dist = "cyclic";
@@ -93,24 +93,54 @@ void unzip( size_t                thread_idx, // input
 int main_( options::positional positional,
            options::options    options )
 {
-    // First let's see if the user has specified the `-j`
-    // parameter and get its value.  Note that, for this
-    // parameter, we are guaranteed to have a value by the
-    // options parsing framework (which knows that this parameter
-    // must have a value).
-    size_t jobs = has_key( options, 'j' )
-                ? atoi( options['j'].get().c_str() )
-                : 1;
-    // We must still check it for validity.
-    FAIL( jobs < 1, "invalid number of jobs: " << jobs );
-    FAIL( jobs > MAX_JOBS, "max allowed jobs is " << MAX_JOBS );
-
-    // The zip file name will be one of the positional arguments.
-    string filename = positional[ARG_FILE_NAME];
-
     // This will be used to register start/end times for each
     // of the tasks.
     StopWatch watch;
+
+    /************************************************************
+     * Determine the number of jobs to use
+     ************************************************************/
+    // First initialize the number of jobs to its default value.
+    size_t jobs = 1;
+    // Next, let's get the number of threads that the machine
+    // naturally supports (this will include hyperthreads).  Even
+    // if we don't need this, we might want to log it at the end.
+    auto num_threads = thread::hardware_concurrency();
+    // Now let's see if the user has specified the `-j` parameter
+    // and get its value.  Note that, for this parameter, we are
+    // guaranteed to have a value by the options parsing framework
+    // (which knows that this parameter must have a value),
+    // although it may not be valid.
+    if( has_key( options, 'j' ) ) {
+        string j = options['j'].get();
+        // MAX - use the max number of threads available.
+        // OPT - choose an "optimal" number of threads.
+        // Otherwise, must be a positive integer.
+        if( j == "MAX" )
+            // Assume that num_threads includes the hyperthreads,
+            // so in that case we probably don't want to go above
+            // that.
+            jobs = num_threads;
+        else if( j == "OPT" )
+            // Assume we have hyper-threading; use all of the
+            // "true" threads and then half of the hyperthreads.
+            jobs = size_t( num_threads*0.75 + 0.5 );
+        else
+            // atoi should apparently return zero when the
+            // conversion cannot be performed, which, luckily
+            // for us, is an invalid value.
+            jobs = atoi( j.c_str() );
+    }
+    // No matter how we got number of jobs, check it one last time.
+    FAIL( jobs < 1, "invalid number of jobs: " << jobs );
+    FAIL( jobs > MAX_JOBS, "max allowed jobs is " << MAX_JOBS );
+
+    /************************************************************
+     * Load the zip file and parse list of entries (but do not
+     * yet start decompressing).
+     ************************************************************/
+    // The zip file name will be one of the positional arguments.
+    string filename = positional[ARG_FILE_NAME];
 
     watch.start( "load_zip" );
     // Open the zip file, read it completely into a buffer,
@@ -127,9 +157,6 @@ int main_( options::positional positional,
     // the files in the archive.  However, it will not do any
     // decompression or extraction.
     Zip z( zip_buffer );
-    // Time how long it takes to load the zip and create the
-    // ZipStat data structures.
-    watch.stop( "load_zip" );
 
     // Now find the maximum (uncompressed) size of all the
     // entries in the archive.
@@ -144,6 +171,10 @@ int main_( options::positional positional,
         []( ZipStat const& zs ){ return zs.is_folder(); });
     auto folders = make_range( stats.begin(), folders_end );
     auto files   = make_range( folders_end,   stats.end() );
+
+    // Time how long it takes to load the zip and handle the
+    // ZipStat data structures.
+    watch.stop( "load_zip" );
 
     /************************************************************
      * Pre-create folder structure
@@ -161,9 +192,7 @@ int main_( options::positional positional,
     for( auto const& zs : stats )
         fps.push_back( zs.folder() );
     // Now we ensure that each one exists.
-    watch.start( "folders" );
-    mkdirs_p( fps );
-    watch.stop( "folders" );
+    watch.run( "folders", [&fps]{ mkdirs_p( fps ); } );
 
     /************************************************************
      * Distribution of files to the threads
@@ -177,7 +206,7 @@ int main_( options::positional positional,
     // length equal to the number of jobs.  Each element should
     // itself be a vector if indexs representing files assigned
     // to that thread for extraction.
-    auto thread_idxs = distribute[ strategy ]( jobs, files );
+    auto thread_idxs = distribute[strategy]( jobs, files );
     FAIL_( thread_idxs.size() != jobs );
 
     /************************************************************
@@ -217,15 +246,17 @@ int main_( options::positional positional,
     /************************************************************
      * Print out diagnostics
      ************************************************************/
+    #define BYTES( a ) a << " (" << human_bytes( a ) << ")"
+
     LOG( "" );
     LOGP( "file",     filename       );
     LOGP( "jobs",     jobs           );
+    LOGP( "threads",  num_threads    );
     LOGP( "entries",  z.size()       );
     LOGP( "files",    files.size()   );
     LOGP( "folders",  folders.size() );
     LOGP( "strategy", strategy       );
-    LOGP( "max size", max_size << " (" <<
-          human_bytes( max_size ) << ")" );
+    LOGP( "max size", BYTES( max_size ) );
 
     LOG( "" );
     for( size_t i = 0; i < jobs; ++i )
@@ -240,14 +271,12 @@ int main_( options::positional positional,
 
     LOG( "" );
     for( size_t i = 0; i < jobs; ++i )
-        LOGP( "thread " << i+1 << " bytes", bytes_count[i] <<
-            " (" << human_bytes( bytes_count[i] ) << ")" );
+        LOGP( "thread " << i+1 << " bytes", BYTES( bytes_count[i] ) );
 
     auto bytes = accumulate( bytes_count.begin(),
                              bytes_count.end(),
                              size_t( 0 ) );
-    LOGP( "total bytes", bytes << " (" <<
-        human_bytes( bytes ) << ")" );
+    LOGP( "total bytes", BYTES( bytes ) );
 
     LOG( "" );
     for( auto&& result : watch.results() )

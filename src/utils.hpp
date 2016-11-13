@@ -64,6 +64,12 @@ auto maximum( It start, It end, KeyF f ) -> decltype( *start ) {
 class StopWatch {
 
 public:
+    // For convenience: will start, run, stop.
+    template<typename FuncT>
+    void run( std::string const& name, FuncT func ) {
+        start( name ); func(); stop( name );
+    }
+
     // Start the clock for a given event name.  If an event with
     // this name already exists then it will be overwritten and
     // any end times for it will be deleted.
