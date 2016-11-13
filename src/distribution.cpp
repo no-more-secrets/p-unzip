@@ -2,21 +2,31 @@
  * Interfaces for taking a list of zip entries and distributing
  * the files among a number of threads.
  ***************************************************************/
+#include "macros.hpp"
 #include "distribution.hpp"
 
 using namespace std;
 
+// This macro will create a dummy struct with a unique name that
+// exists solely for the purpose of running some code at startup.
+// Might want to refactor this into a generic "at startup".
+#define STRATEGY( name )                                \
+    struct STRING_JOIN( register_strategy, __LINE__ ) { \
+        STRING_JOIN( register_strategy, __LINE__ )() {  \
+            distribute[TOSTRING(name)] =                \
+                distribution_ ## name;                  \
+        }                                               \
+    } STRING_JOIN( obj, __LINE__ );
+
+// Global dictionary is located and populated in this module.
+map<string, distribution_t> distribute;
+
 /****************************************************************
  * The functions below will take a number of threads and a list
  * of zip entries and will distribute them according to the
- * given strategy.
+ * given strategy.  See header file for explanations.
  ***************************************************************/
 
-// The "cyclic" strategy will first sort the files by path name,
-// then will iterate through the sorted list while cycling
-// through the list of threads, i.e., the first file will be
-// assigned to the first thread, the second file to the second
-// thread, the Nth file to the (N % threads) thread.
 index_lists distribution_cyclic( size_t             threads,
                                  files_range const& files ) {
     vector<vector<size_t>> thread_idxs( threads );
@@ -25,12 +35,11 @@ index_lists distribution_cyclic( size_t             threads,
         thread_idxs[count++ % threads].push_back( zs.index() );
     return thread_idxs;
 }
+STRATEGY( cyclic ) // Register this strategy
 
-// The "sliced" strategy will first sort the files by path name,
-// then will divide the resulting list into threads pieces and
-// will assign each slice to the corresponding thread, i.e., if
-// there are two threads, then the first half of the files will
-// go to the first thread and the second half to the second.
+//________________________________________________________________
+//
+
 index_lists distribution_sliced( size_t             threads,
                                  files_range const& files ) {
     FAIL( true, "sliced distribution not implemented" );
@@ -38,15 +47,11 @@ index_lists distribution_sliced( size_t             threads,
     (void)files;
     return {};
 }
+STRATEGY( sliced ) // Register this strategy
 
-// The "folder" strategy will compile a list of all folders
-// along with the number of files they contain.  It will then
-// sort the list of folders by the number of files they contain,
-// and will then iterate through the list of folders and assign
-// each to a thread in a cyclic manner.  The idea behind this
-// strategy is to never assign files from the same folder to
-// more than one thread, but while trying to give each thread
-// roughly the same number of files.
+//________________________________________________________________
+//
+
 index_lists distribution_folder( size_t             threads,
                                  files_range const& files ) {
     FAIL( true, "folder distribution not implemented" );
@@ -54,12 +59,11 @@ index_lists distribution_folder( size_t             threads,
     (void)files;
     return {};
 }
+STRATEGY( folder ) // Register this strategy
 
-// The "bytes" strategy will try to assign each thread roughly
-// the same number of total bytes to write.  However, in
-// practice the number bytes written by each thread will not
-// be exactly the same because a given file must be assigned
-// to a single thread in its entirety.
+//________________________________________________________________
+//
+
 index_lists distribution_bytes(  size_t             threads,
                                  files_range const& files ) {
     FAIL( true, "bytes distribution not implemented" );
@@ -67,3 +71,4 @@ index_lists distribution_bytes(  size_t             threads,
     (void)files;
     return {};
 }
+STRATEGY( bytes ) // Register this strategy

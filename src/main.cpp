@@ -171,20 +171,13 @@ int main_( options::positional positional,
     // See if the user has specified a distribution strategy.
     string strategy = has_key( options, 'd' ) ? options['d'].get()
                                               : default_dist;
-    map<string, distribution_t> distribute;
-    // Map each strategy name to a function that will carry out
-    // the action.
-    distribute["cyclic"] = distribution_cyclic;
-    distribute["sliced"] = distribution_sliced;
-    distribute["folder"] = distribution_folder;
-    distribute["bytes"]  = distribution_bytes;
-    FAIL( !has_key( distribute, strategy ),
-        "strategy " << strategy << " is invalid." );
+    FAIL( !has_key( distribute, strategy ), "strategy " <<
+        strategy << " is invalid." );
     // Do the distribution.  The result should be a vector of
     // length equal to the number of jobs.  Each element should
     // itself be a vector if indexs representing files assigned
     // to that thread for extraction.
-    auto thread_idxs = distribute[strategy]( jobs, files );
+    auto thread_idxs = distribute[ strategy ]( jobs, files );
     FAIL_( thread_idxs.size() != jobs );
 
     /************************************************************

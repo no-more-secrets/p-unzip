@@ -9,6 +9,9 @@
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
+#define STRING_JOIN2(arg1, arg2) arg1 ## arg2
+#define STRING_JOIN(arg1, arg2) STRING_JOIN2(arg1, arg2)
+
 // FAIL is the converse of assert.  It will throw if the
 // condition passed to it evaluates to true.
 #define FAIL( a, b )                        \
