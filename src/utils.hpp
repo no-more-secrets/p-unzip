@@ -6,12 +6,18 @@
 #include "macros.hpp"
 #include "ptr_resource.hpp"
 
-#include <string>
+#include <chrono>
+#include <map>
 #include <memory>
+#include <string>
+#include <vector>
 
 /****************************************************************
  * Convenience methods
  ***************************************************************/
+// Format a quantity of bytes in human readable form.
+std::string human_bytes( size_t bytes );
+
 // Does the set contain the given key.
 template<typename ContainerT, typename KeyT>
 inline bool has_key( ContainerT const& s, KeyT const& k ) {
@@ -49,6 +55,50 @@ auto maximum( It start, It end, KeyF f ) -> decltype( *start ) {
     FAIL_( max_iter == end );
     return *max_iter;
 }
+
+/****************************************************************
+ * StopWatch
+ ***************************************************************/
+/* This class can be used to mark start/stop times of various
+ * events and to get the durations in various useful forms. */
+class StopWatch {
+
+public:
+    // Start the clock for a given event name.  If an event with
+    // this name already exists then it will be overwritten and
+    // any end times for it will be deleted.
+    void start( std::string const& name );
+    // Register an end time for an event.  Will throw if there
+    // was no start time for the event.
+    void stop( std::string const& name );
+
+    // Get results for an even in the given units.  If either a
+    // start or end time for the event has not been registered
+    // then these will throw.
+    int64_t milliseconds( std::string const& name )const ;
+    int64_t seconds( std::string const& name ) const;
+    int64_t minutes( std::string const& name ) const;
+
+    // Gets the results for an event and then formats them in
+    // a way that is most readable given the duration.
+    std::string human( std::string const& name ) const;
+    // Get a list of all results in human readable form.
+    // First element of pair is the event name and the second
+    // is the result of calling human() for that event.
+    using result_pair = std::pair<std::string, std::string>;
+    std::vector<result_pair> results() const;
+
+private:
+    using clock        = std::chrono::system_clock;
+    using time_point   = std::chrono::time_point<clock>;
+    using events_timer = std::map<std::string, time_point>;
+
+    bool event_complete( std::string const& name ) const;
+
+    events_timer start_times;
+    events_timer end_times;
+
+};
 
 /****************************************************************
  * Range class for turning pairs of iterators into iterables.

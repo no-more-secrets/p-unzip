@@ -15,17 +15,19 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdlib>
 #include <numeric>
 #include <string>
 #include <thread>
+#include <iomanip>
 
 using namespace std;
 
 // Positional args should always be referred to by these.
 size_t const ARG_FILE_NAME = 0;
 // The maximum value that the `-j` parameter can take.
-size_t const MAX_JOBS = 8;
+size_t const MAX_JOBS      = 16;
 
 /****************************************************************
  * This is the function that will be given to each of the thread
@@ -66,7 +68,7 @@ void unzip( size_t                thread_idx, // input
         size_t size = zip[idx].size();
         // This logging might be turned off since it is probably
         // unnecessary and unreliable anyway.
-        LOG( thread_idx << ": " << name );
+        LOG( thread_idx << "> " << name );
         zip.extract_in( idx, uncompressed );
         // Enclose in a scope to make sure the file gets close
         // immediately after.
@@ -102,6 +104,11 @@ int main_( options::positional positional,
     // The zip file name will be one of the positional arguments.
     string filename = positional[ARG_FILE_NAME];
 
+    // This will be used to register start/end times for each
+    // of the tasks.
+    StopWatch watch;
+
+    watch.start( "load_zip" );
     // Open the zip file, read it completely into a buffer,
     // then manage the buffer with a shared pointer.  This is
     // because the buffer will be used possibly by many zip
@@ -116,6 +123,9 @@ int main_( options::positional positional,
     // the files in the archive.  However, it will not do any
     // decompression or extraction.
     Zip z( zip_buffer );
+    // Time how long it takes to load the zip and create the
+    // ZipStat data structures.
+    watch.stop( "load_zip" );
 
     // Now find the maximum (uncompressed) size of all the
     // entries in the archive.
@@ -130,15 +140,6 @@ int main_( options::positional positional,
         []( ZipStat const& zs ){ return zs.is_folder(); });
     auto folders = make_range( stats.begin(), folders_end );
     auto files   = make_range( folders_end,   stats.end() );
-
-    LOG( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" );
-    LOG( "file:     " << filename       );
-    LOG( "jobs:     " << jobs           );
-    LOG( "entries:  " << z.size()       );
-    LOG( "files:    " << files.size()   );
-    LOG( "folders:  " << folders.size() );
-    LOG( "max size: " << max_size       );
-    LOG( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" );
 
     /************************************************************
      * Pre-create folder structure
@@ -156,7 +157,9 @@ int main_( options::positional positional,
     for( auto const& zs : stats )
         fps.push_back( zs.folder() );
     // Now we ensure that each one exists.
+    watch.start( "folders" );
     mkdirs_p( fps );
+    watch.stop( "folders" );
 
     /************************************************************
      * Prepare data structures for the threads
@@ -182,6 +185,7 @@ int main_( options::positional positional,
     /************************************************************
      * Start multithreading
      ************************************************************/
+    watch.start( "unzip" );
     for( size_t i = 0; i < jobs; ++i )
         threads[i] = thread( unzip,
                              i,
@@ -193,27 +197,48 @@ int main_( options::positional positional,
                              std::ref( results[i] ) );
 
     for( auto& t : threads ) t.join();
+    watch.stop( "unzip" );
+
+    for( size_t i = 0; i < jobs; ++i )
+        FAIL_( !results[i] );
 
     /************************************************************
-     * Sanity check results
+     * Print out diagnostics
      ************************************************************/
-    LOG( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" );
-    for( size_t i = 0; i < jobs; ++i ) {
-        FAIL_( results[i] == false );
-        LOG( "thread " << i+1 << ":  files: " << files_count[i] );
-        LOG( "           bytes: " << bytes_count[i]   );
-        //cout << "    mtime:     "  << s.mtime()     << endl;
-    }
+    LOG( "" );
+    LOGP( "file",     filename       );
+    LOGP( "jobs",     jobs           );
+    LOGP( "entries",  z.size()       );
+    LOGP( "files",    files.size()   );
+    LOGP( "folders",  folders.size() );
+    LOGP( "max size", max_size << " (" <<
+          human_bytes( max_size ) << ")" );
+
+    LOG( "" );
+    for( size_t i = 0; i < jobs; ++i )
+        LOGP( "thread " << i+1 << " files", files_count[i] );
 
     // Make sure that the sum of files counts for each thread
     // equals the total number of files in the zip.
-    auto files_written = std::accumulate(
+    auto files_written = accumulate(
         files_count.begin(), files_count.end() , size_t( 0 ) );
+    LOGP( "total files", files_written );
     FAIL_( files_written != files.size() );
 
-    LOG( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" );
-    LOG( "Total bytes written: " << std::accumulate(
-        bytes_count.begin(), bytes_count.end() , size_t( 0 ) ) );
+    LOG( "" );
+    for( size_t i = 0; i < jobs; ++i )
+        LOGP( "thread " << i+1 << " bytes", bytes_count[i] <<
+            " (" << human_bytes( bytes_count[i] ) << ")" );
+
+    auto bytes = accumulate( bytes_count.begin(),
+                             bytes_count.end(),
+                             size_t( 0 ) );
+    LOGP( "total bytes", bytes << " (" <<
+        human_bytes( bytes ) << ")" );
+
+    LOG( "" );
+    for( auto&& result : watch.results() )
+        LOGP( result.first << " time", result.second );
 
     return 0;
 }
