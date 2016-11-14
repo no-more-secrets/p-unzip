@@ -17,8 +17,7 @@ using namespace std;
  * Functions that require platform-specific implementations.
  ***************************************************************/
 #ifndef POSIX
-#   include <Windows.h> // TODO: Check if these are both needed
-#   include <FileAPI.h>
+#   include <windows.h>
 #endif
 
 // Apparently these work on Windows as well as posix.

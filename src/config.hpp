@@ -41,7 +41,7 @@
  * Compile-time program parameters
  ***************************************************************/
 // The maximum value that the `-j` parameter can take.
-constexpr size_t MAX_JOBS = 64;
+#define MAX_JOBS 64
 // This is the default distribution strategy to use if the
 // user does not specify on the commandline.
-constexpr char const* default_dist = "cyclic";
+#define DEFAULT_DIST "cyclic"

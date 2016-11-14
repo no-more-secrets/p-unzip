@@ -92,6 +92,7 @@ int main_( options::positional positional,
     // This will be used to register start/end times for each
     // of the tasks.
     StopWatch watch;
+    watch.start( "total" ); // Even representing total runtime.
 
     /************************************************************
      * Determine the number of jobs to use
@@ -195,7 +196,7 @@ int main_( options::positional positional,
      ************************************************************/
     // See if the user has specified a distribution strategy.
     string strategy = has_key( options, 'd' ) ? options['d'].get()
-                                              : default_dist;
+                                              : DEFAULT_DIST;
     FAIL( !has_key( distribute, strategy ), "strategy " <<
         strategy << " is invalid." );
     // Do the distribution.  The result should be a vector of
@@ -239,6 +240,8 @@ int main_( options::positional positional,
     /************************************************************
      * Print out diagnostics
      ************************************************************/
+    watch.stop( "total" ); // End program runtime.
+
     #define BYTES( a ) a << " (" << human_bytes( a ) << ")"
 
     LOG( "" );
@@ -272,8 +275,11 @@ int main_( options::positional positional,
     LOGP( "total bytes", BYTES( bytes ) );
 
     LOG( "" );
+    // Log all the times that we measured but put "total" last.
     for( auto&& result : watch.results() )
-        LOGP( result.first << " time", result.second );
+        if( result.first != "total" )
+            LOGP( result.first << " time", result.second );
+    LOGP( "total time", watch.human( "total" ) );
 
     return 0;
 }
