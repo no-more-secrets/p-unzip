@@ -5,6 +5,8 @@
 #include "macros.hpp"
 #include "distribution.hpp"
 
+#include <algorithm>
+
 using namespace std;
 
 // This macro will create a dummy struct with a unique name that
@@ -42,10 +44,49 @@ STRATEGY( cyclic ) // Register this strategy
 
 index_lists distribution_sliced( size_t             threads,
                                  files_range const& files ) {
-    FAIL( true, "sliced distribution not implemented" );
-    (void)threads;
-    (void)files;
-    return {};
+    // First we copy the zip stats and sort them by name.
+    // Typically they will already be sorted, but just in
+    // case they're not, we do it here.  This is important
+    // because we want to minimize the number of folders
+    // whose files are split among multiple threads.
+    vector<ZipStat> stats( files.begin(), files.end() );
+    auto by_name = []( ZipStat const& l, ZipStat const& r ) {
+        return l.name() < r.name();
+    };
+    sort( stats.begin(), stats.end(), by_name );
+    // Now calculate how many files we can give to each thread.
+    // Each thread is given an equal number of files, minus
+    // a few (< threads) that are residual at the end.  These
+    // residual ones will be distributed as in the cyclic
+    // strategy since there are so few of them that it doesn't
+    // really matter how they're distributed.
+    vector<vector<size_t>> thread_idxs( threads );
+    size_t chunk = max( stats.size()/threads, size_t( 1 ) );
+    size_t residual   = stats.size() % threads;
+    size_t sliced_end = stats.size() - residual;
+    FAIL_( chunk < 1 );
+    FAIL_( chunk > stats.size() );
+    FAIL_( residual > threads );
+    FAIL_( sliced_end > stats.size() );
+    // Now proceed to distribute to the threads.
+    size_t count = 0;
+    for( auto const& zs : stats ) {
+        // This branch will be true most of the time.  It will
+        // be false at the very end of the range when we hit
+        // the residual items.
+        size_t where = (count < sliced_end) ? count / chunk
+                                            : count % threads;
+        FAIL_( where >= threads );
+        thread_idxs[where].push_back( zs.index() );
+        ++count;
+    }
+    // Now a sanity check to make sure we got pricisely the
+    // right number of files.
+    count = 0;
+    for( auto const& ti : thread_idxs )
+        count += ti.size();
+    FAIL_( count != files.size() );
+    return thread_idxs;
 }
 STRATEGY( sliced ) // Register this strategy
 

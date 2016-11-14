@@ -78,11 +78,11 @@ string StopWatch::human( string const& name ) const {
     auto s  = seconds( name );
     auto ms = milliseconds( name );
     if( m > 0 )
-        out << m << "m" << s/60 << "s";
+        out << m << "m" << s % 60 << "s";
     else if( s > 0 ) {
         out << s << "s";
         if( s < 2 )
-            out << ms/1000 << "ms";
+            out << ms % 1000 << "ms";
     }
     else
         out << ms << "ms";

@@ -89,6 +89,7 @@ void unzip( size_t                thread_idx, // input
 int main_( options::positional positional,
            options::options    options )
 {
+    cout << "starting p-unzip" << endl;
     // This will be used to register start/end times for each
     // of the tasks.
     StopWatch watch;
@@ -203,7 +204,9 @@ int main_( options::positional positional,
     // length equal to the number of jobs.  Each element should
     // itself be a vector if indexs representing files assigned
     // to that thread for extraction.
+    watch.start( "distribute" );
     auto thread_idxs = distribute[strategy]( jobs, files );
+    watch.stop( "distribute" );
     FAIL_( thread_idxs.size() != jobs );
 
     /************************************************************
@@ -244,7 +247,6 @@ int main_( options::positional positional,
 
     #define BYTES( a ) a << " (" << human_bytes( a ) << ")"
 
-    LOG( "" );
     LOGP( "file",     filename       );
     LOGP( "jobs",     jobs           );
     LOGP( "threads",  num_threads    );
