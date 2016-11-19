@@ -45,3 +45,7 @@
 // This is the default distribution strategy to use if the
 // user does not specify on the commandline.
 #define DEFAULT_DIST "cyclic"
+// If chunk size is not specified then this will be the default.
+// Chunk size is the size of the chunk in which which data will
+// be written to disk as it is decompressed.
+#define DEFAULT_CHUNK 1024

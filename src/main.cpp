@@ -39,15 +39,19 @@ size_t const ARG_FILE_NAME = 0;
  * archived files.
  ***************************************************************/
 void unzip( size_t                thread_idx, // input
-            size_t                max_size,   // input
             Buffer::SP&           zip_buffer, // input
             vector<size_t> const& idxs,       // input
+            size_t                chunk_size, // input
+            bool                  quiet,      // input
+            StopWatch&            watch,      // output
             size_t&               files,      // output
             size_t&               bytes,      // output
             bool&                 ret )       // output
 {
     ret = false; // assume we fail unless we succeed.
     TRY
+    // Start the clock.  Each thread reports its total runtime.
+    watch.start("unzip");
     // Create the zip here because we don't know if libzip or
     // zlib are thread safe.  All that the Zip creation will
     // do here is to change the ref count on the buffer which
@@ -56,7 +60,7 @@ void unzip( size_t                thread_idx, // input
     // Allocate a new buffer for use only within this thread
     // that is large enough to hold any single uncompressed
     // file in the archive.
-    Buffer uncompressed( max_size );
+    Buffer uncompressed( chunk_size );
     // Now just loop over each entry
     for( auto idx : idxs ) {
         // This will be the file name.  It should never be
@@ -68,17 +72,18 @@ void unzip( size_t                thread_idx, // input
         size_t size = zip[idx].size();
         // This logging might be turned off since it is probably
         // unnecessary and unreliable anyway.
-        LOG( thread_idx << "> " << name );
-        zip.extract_in( idx, uncompressed );
-        // Enclose in a scope to make sure the file gets close
-        // immediately after.
-        File( name, "wb" ).write( uncompressed, size );
+        if( !quiet ) LOG( thread_idx << "> " << name );
+        // Decompress the data and write it to the file in
+        // chunks of size equal to uncompressed.size().
+        zip.extract_to( idx, name, uncompressed );
         // For auditing / sanity checking purposes.
         files++; bytes += size;
     }
 
     ret = true; // return success
     CATCH_ALL
+    // Stop the clock; we will always get here even on exception.
+    watch.stop("unzip");
 }
 
 /****************************************************************
@@ -96,6 +101,11 @@ int main_( options::positional positional,
     watch.start( "total" ); // Even representing total runtime.
 
     /************************************************************
+     * Get miscellaneous options
+     ************************************************************/
+    bool quiet = has_key( options, 'q' );
+
+    /************************************************************
      * Determine the number of jobs to use
      ************************************************************/
     // First initialize the number of jobs to its default value.
@@ -111,15 +121,15 @@ int main_( options::positional positional,
     // although it may not be valid.
     if( has_key( options, 'j' ) ) {
         string j = options['j'].get();
-        // MAX - use the max number of threads available.
-        // OPT - choose an "optimal" number of threads.
+        // max  - use the max number of threads available.
+        // auto - choose an "optimal" number of threads.
         // Otherwise, must be a positive integer.
-        if( j == "MAX" )
+        if( j == "max" )
             // Assume that num_threads includes the hyperthreads,
             // so in that case we probably don't want to go above
             // that.
             jobs = num_threads;
-        else if( j == "OPT" )
+        else if( j == "auto" )
             // Assume we have hyper-threading; use all of the
             // "true" threads and then half of the hyperthreads.
             jobs = size_t( num_threads*0.75 + 0.5 );
@@ -175,6 +185,40 @@ int main_( options::positional positional,
     watch.stop( "load_zip" );
 
     /************************************************************
+     * Determine the chunk size
+     ************************************************************/
+    // When extracting a file from the zip archive, the chunk
+    // size is the number of bytes that are decompressed and
+    // written to the output file at a time.  The user can
+    // specify "max" which will write the entire file at once,
+    // however this requires being able to hold the entire
+    // decompressed file in memory at once (and for every thread).
+    // With zip files that contain large files together with
+    // multithreaded execution it is desireable to limit the
+    // chunk size to save memory.  Also, this allows you to
+    // control size of the blocks that are written to disk which
+    // may have an effect on disk write throughput.
+    size_t chunk_size = DEFAULT_CHUNK;
+    if( has_key( options, 'c' ) ) {
+        string c = options['c'].get();
+        if( c == "max" )
+            // Use the max file size in the zip as chunk size.
+            // Warning: this can cause allocation failures.
+            chunk_size = max_size;
+        else
+            // atoi should apparently return zero when the
+            // conversion cannot be performed, which, luckily
+            // for us, is an invalid value.
+            chunk_size = atoi( c.c_str() );
+    }
+    // At the very least, we need to check if this is zero which
+    // it will be if it is invalid value on the command line.
+    // However, it is not recommended to choose something as low
+    // as one since that it likely an inefficient way to write to
+    // disk.
+    FAIL( chunk_size < 1, "Invalid chunk size" );
+
+    /************************************************************
      * Pre-create folder structure
      ************************************************************/
     // In a parallel unzip we must pre-create all of the folders
@@ -220,6 +264,8 @@ int main_( options::positional positional,
     // references to the elements.  This will hold the return
     // values from each thread.
     array<bool, MAX_JOBS> results;
+    // Used for each thread to time their events.
+    vector<StopWatch> watches( jobs );
 
     vector<thread> threads( jobs );
 
@@ -227,9 +273,11 @@ int main_( options::positional positional,
     for( size_t i = 0; i < jobs; ++i )
         threads[i] = thread( unzip,
                              i,
-                             max_size,
                              std::ref( zip_buffer ),
                              std::ref( thread_idxs[i] ),
+                             chunk_size,
+                             quiet,
+                             std::ref( watches[i] ),
                              std::ref( files_count[i] ),
                              std::ref( bytes_count[i] ),
                              std::ref( results[i] ) );
@@ -247,14 +295,16 @@ int main_( options::positional positional,
 
     #define BYTES( a ) a << " (" << human_bytes( a ) << ")"
 
-    LOGP( "file",     filename       );
-    LOGP( "jobs",     jobs           );
-    LOGP( "threads",  num_threads    );
-    LOGP( "entries",  z.size()       );
-    LOGP( "files",    files.size()   );
-    LOGP( "folders",  folders.size() );
-    LOGP( "strategy", strategy       );
-    LOGP( "max size", BYTES( max_size ) );
+    LOGP( "file",       filename       );
+    LOGP( "jobs",       jobs           );
+    LOGP( "threads",    num_threads    );
+    LOGP( "entries",    z.size()       );
+    LOGP( "files",      files.size()   );
+    LOGP( "folders",    folders.size() );
+    LOGP( "strategy",   strategy       );
+    LOGP( "chunk",      chunk_size     );
+    LOGP( "chunks_mem", BYTES( chunk_size*jobs ) );
+    LOGP( "max size",   BYTES( max_size ) );
 
     LOG( "" );
     for( size_t i = 0; i < jobs; ++i )
@@ -269,12 +319,18 @@ int main_( options::positional positional,
 
     LOG( "" );
     for( size_t i = 0; i < jobs; ++i )
-        LOGP( "thread " << i+1 << " bytes", BYTES( bytes_count[i] ) );
+        LOGP( "thread " << i+1 << " bytes",
+            BYTES( bytes_count[i] ) <<
+            " [" << watches[i].human( "unzip" ) << "]" );
 
     auto bytes = accumulate( bytes_count.begin(),
                              bytes_count.end(),
                              size_t( 0 ) );
     LOGP( "total bytes", BYTES( bytes ) );
+    size_t total_in_zip = 0;
+    for( size_t i = 0; i < z.size(); ++i )
+        total_in_zip += z[i].size();
+    FAIL_( total_in_zip != bytes );
 
     LOG( "" );
     // Log all the times that we measured but put "total" last.

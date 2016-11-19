@@ -41,6 +41,47 @@ Buffer Zip::extract( size_t idx ) const {
     return out;
 }
 
+// Uncompress a file directly to disk and allow caller
+// to supply a buffer to hold the chunks and to control
+// chunk size.
+void Zip::extract_to( size_t  idx,
+                      string  const& file,
+                      Buffer& buf ) const {
+    FAIL_( buf.size() == 0 );
+    // First open the file to which we will write the result.
+    File out( file, "wb" );
+    // Get uncompressed file size
+    zip_int64_t fsize = at( idx ).size();
+    zip_file_t* zf;
+    // "open" the zip file; this is not really opening a file.
+    FAIL_( !(zf = zip_fopen_index( p, idx, 0 )) );
+    // !! Should not throw until zip_fclose is called
+    zip_int64_t total = 0;
+    while( true ) {
+        auto read = zip_fread( zf, buf.get(), buf.size() );
+        // May return -1 on error; not clear whether it will
+        // return zero if no error but no bytes read.  In
+        // either case, it's probably correct to just break
+        // out of the loop instead of throwing if read <= 0.
+        if( read <= 0 ) break;
+        out.write( buf, read );
+        // We need to keep a running total of bytes written
+        // so that we can check at the end if they were all
+        // written.  This is because it is not guaranteed
+        // that, if we break out of the loop, the entire file
+        // was written.
+        total += read;
+    }
+    // !! Close immediately to avoid resource leak.
+    zip_fclose( zf );
+    // If we haven't read a number of bytes equal to the
+    // reported size of the uncompressed file then throw.
+    // Otherwise succeed.  This should be adequate no
+    // matter how we got here and/or whether zip_fread
+    // returned -1 or not.
+    FAIL_( total != fsize );
+}
+
 // Uncompress file into existing buffer.  Throws if the
 // buffer is not big enough.
 void Zip::extract_in( size_t idx, Buffer& buffer ) const {
@@ -49,12 +90,14 @@ void Zip::extract_in( size_t idx, Buffer& buffer ) const {
     zip_file_t* zf;
     FAIL_( !(zf = zip_fopen_index( p, idx, 0 )) );
     // !! Should not throw until zip_fclose is called
-    zip_uint64_t count = zip_fread( zf, buffer.get(), fsize );
+    zip_int64_t count = zip_fread( zf, buffer.get(), fsize );
     // !! Close immediately to avoid resource leak.
     zip_fclose( zf );
+    // zip_fread can return -1 on error
+    FAIL_( count < 0 );
     // If we haven't read a number of bytes equal to the
     // reported size of the uncompressed file then throw.
-    FAIL_( count != fsize );
+    FAIL_( zip_uint64_t(count) != fsize );
 }
 
 // This will release the underlying zip source, but not the

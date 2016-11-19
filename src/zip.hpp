@@ -80,6 +80,22 @@ public:
     // buffer is not big enough.
     void extract_in( size_t idx, Buffer& buffer ) const;
 
+    // Uncompress file directly to disk.  If the disk file does
+    // not exist it will be created, otherwise it will be
+    // overwritten.  Will throw if everything does not go
+    // smoothly.  The purpose of this function is to decompress
+    // the data in small bits and write it to the file as it is
+    // decompressed, and also to allow the caller to set the
+    // the size of the chunks in which the data is decompressed
+    // and written to disk.  This is to avoid having to hold the
+    // entire contents of the uncompressed file in memory at a
+    // time and to control throughput in the disk writes.
+    // Note that the size of the supplied buffer, which holds
+    // the chunks as they are decompressed, sets the chunk size.
+    void extract_to( size_t       idx,
+                     std::string  const& file,
+                     Buffer&      buf ) const;
+
     typedef std::vector<ZipStat>::const_iterator
             const_iterator;
 
