@@ -97,7 +97,7 @@ void Zip::extract_in( size_t idx, Buffer& buffer ) const {
     FAIL_( count < 0 );
     // If we haven't read a number of bytes equal to the
     // reported size of the uncompressed file then throw.
-    FAIL_( zip_uint64_t(count) != fsize );
+    FAIL_( zip_uint64_t( count ) != fsize );
 }
 
 // This will release the underlying zip source, but not the

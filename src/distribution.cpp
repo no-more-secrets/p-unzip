@@ -26,22 +26,31 @@ map<string, distribution_t> distribute;
 /****************************************************************
  * The functions below will take a number of threads and a list
  * of zip entries and will distribute them according to the
- * given strategy.  See header file for explanations.
+ * given strategy.
  ***************************************************************/
 
+// The "cyclic" strategy will first sort the files by path name,
+// then will iterate through the sorted list while cycling
+// through the list of threads, i.e., the first file will be
+// assigned to the first thread, the second file to the second
+// thread, the Nth file to the (N % threads) thread.
 index_lists distribution_cyclic( size_t             threads,
                                  files_range const& files ) {
     vector<vector<size_t>> thread_idxs( threads );
     size_t count = 0;
     for( auto& zs : files )
         thread_idxs[count++ % threads].push_back( zs.index() );
-    return thread_idxs;
+    return move( thread_idxs );
 }
 STRATEGY( cyclic ) // Register this strategy
 
 //________________________________________________________________
-//
 
+// The "sliced" strategy will first sort the files by path name,
+// then will divide the resulting list into threads pieces and
+// will assign each slice to the corresponding thread, i.e., if
+// there are two threads, then the first half of the files will
+// go to the first thread and the second half to the second.
 index_lists distribution_sliced( size_t             threads,
                                  files_range const& files ) {
     // First we copy the zip stats and sort them by name.
@@ -86,13 +95,20 @@ index_lists distribution_sliced( size_t             threads,
     for( auto const& ti : thread_idxs )
         count += ti.size();
     FAIL_( count != files.size() );
-    return thread_idxs;
+    return move( thread_idxs );
 }
 STRATEGY( sliced ) // Register this strategy
 
 //________________________________________________________________
-//
 
+// The "folder" strategy will compile a list of all folders
+// along with the number of files they contain.  It will then
+// sort the list of folders by the number of files they contain,
+// and will then iterate through the list of folders and assign
+// each to a thread in a cyclic manner.  The idea behind this
+// strategy is to never assign files from the same folder to
+// more than one thread, but while trying to give each thread
+// roughly the same number of files.
 index_lists distribution_folder( size_t             threads,
                                  files_range const& files ) {
     FAIL( true, "folder distribution not implemented" );
@@ -103,13 +119,87 @@ index_lists distribution_folder( size_t             threads,
 STRATEGY( folder ) // Register this strategy
 
 //________________________________________________________________
-//
 
+// The "bytes" strategy will try to assign each thread roughly
+// the same number of total bytes to write.  However, in
+// practice the number bytes written by each thread will not
+// be exactly the same because a given file must be assigned
+// to a single thread in its entirety.
 index_lists distribution_bytes(  size_t             threads,
                                  files_range const& files ) {
-    FAIL( true, "bytes distribution not implemented" );
-    (void)threads;
-    (void)files;
-    return {};
+    // First we copy the zip stats and sort in descending
+    // order by size.  This is because, if we distribute the
+    // large files first, it is more likely in the end that
+    // we will be able to balance them out using the small ones.
+    vector<ZipStat> stats( files.begin(), files.end() );
+    auto by_size = []( ZipStat const& l, ZipStat const& r ) {
+        return l.size() > r.size();
+    };
+    sort( stats.begin(), stats.end(), by_size );
+    vector<vector<size_t>> thread_idxs( threads );
+    // These will hold the running sums of total (uncompressed)
+    // bytes that each thread will have to extract.  We want
+    // ideally (in this strategy at least) to balance them.
+    vector<size_t> totals( threads, 0 );
+    for( auto const& zs : stats ) {
+        auto where = min_element( totals.begin(), totals.end() )
+                   - totals.begin();
+        FAIL_( where < 0 || size_t( where ) >= threads );
+        thread_idxs[where].push_back( zs.index() );
+        totals[where] += zs.size();
+    }
+    // Now a sanity check to make sure we got pricisely the
+    // right number of files.
+    size_t count = 0;
+    for( auto const& ti : thread_idxs )
+        count += ti.size();
+    FAIL_( count != files.size() );
+    return move( thread_idxs );
 }
 STRATEGY( bytes ) // Register this strategy
+
+//________________________________________________________________
+
+// The "runtime" strategy will try to estimate (up to a
+// proportionality constant) the runtime of a thread by weighting
+// the cost of file creation against the cost of writing the file
+// contents.  More precisely, it will calculate a weighted sum
+// of a threads file count and total bytes and hope that this is
+// proportional to its runtime.  Using this metric, it will try to
+// balance runtime among each of the threads.  The proportionality
+// constants need to be calibrated and will be platform-dependent.
+index_lists distribution_runtime(  size_t             threads,
+                                   files_range const& files ) {
+    uint64_t const size_weight = 1;
+    uint64_t const file_weight = 5000000;
+    // First we copy the zip stats and sort in descending
+    // order by size.  This is because, if we distribute the
+    // large files first, it is more likely in the end that
+    // we will be able to balance them out using the small ones.
+    vector<ZipStat> stats( files.begin(), files.end() );
+    auto by_size = []( ZipStat const& l, ZipStat const& r ) {
+        return l.size() > r.size();
+    };
+    sort( stats.begin(), stats.end(), by_size );
+    vector<vector<size_t>> thread_idxs( threads );
+    // These will hold the running sums of total estimated
+    // runtime that each thread will take.  We want ideally
+    // (in this strategy at least) to balance them.
+    vector<uint64_t> totals( threads, 0 );
+    for( auto const& zs : stats ) {
+        auto where = min_element( totals.begin(), totals.end() )
+                   - totals.begin();
+        FAIL_( where < 0 || size_t( where ) >= threads );
+        thread_idxs[where].push_back( zs.index() );
+        totals[where] += size_weight * zs.size()
+                      +  file_weight * 1;
+    }
+    // Now a sanity check to make sure we got pricisely the
+    // right number of files.
+    size_t count = 0;
+    for( auto const& ti : thread_idxs )
+        count += ti.size();
+    FAIL_( count != files.size() );
+    return move( thread_idxs );
+}
+STRATEGY( runtime ) // Register this strategy

@@ -81,7 +81,7 @@ string StopWatch::human( string const& name ) const {
         out << m << "m" << s % 60 << "s";
     else if( s > 0 ) {
         out << s << "s";
-        if( s < 2 )
+        if( s < 10 )
             out << ms % 1000 << "ms";
     }
     else

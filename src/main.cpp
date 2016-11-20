@@ -94,7 +94,6 @@ void unzip( size_t                thread_idx, // input
 int main_( options::positional positional,
            options::options    options )
 {
-    cout << "starting p-unzip" << endl;
     // This will be used to register start/end times for each
     // of the tasks.
     StopWatch watch;
@@ -293,7 +292,9 @@ int main_( options::positional positional,
      ************************************************************/
     watch.stop( "total" ); // End program runtime.
 
-    #define BYTES( a ) a << " (" << human_bytes( a ) << ")"
+    #define BYTES( a ) left << setw(11) << a <<        \
+                       left << setw(11) <<             \
+                       (" (" + human_bytes( a ) + ")")
 
     LOGP( "file",       filename       );
     LOGP( "jobs",       jobs           );
@@ -308,7 +309,9 @@ int main_( options::positional positional,
 
     LOG( "" );
     for( size_t i = 0; i < jobs; ++i )
-        LOGP( "thread " << i+1 << " files", files_count[i] );
+        LOGP( "thread " << i+1 << " files",
+            left << setw(22) << files_count[i] <<
+            " [" << watches[i].human( "unzip" ) << "]" );
 
     // Make sure that the sum of files counts for each thread
     // equals the total number of files in the zip.
