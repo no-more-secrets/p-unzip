@@ -6,22 +6,53 @@
 #include "distribution.hpp"
 
 #include <algorithm>
+#include <set>
+#include <vector>
 
 using namespace std;
 
-// This macro will create a dummy struct with a unique name that
-// exists solely for the purpose of running some code at startup.
-// Might want to refactor this into a generic "at startup".
-#define STRATEGY( name )                                \
-    struct STRING_JOIN( register_strategy, __LINE__ ) { \
-        STRING_JOIN( register_strategy, __LINE__ )() {  \
-            distribute[TOSTRING(name)] =                \
-                distribution_ ## name;                  \
-        }                                               \
-    } STRING_JOIN( obj, __LINE__ );
+// Take a distribution function and wrap it with a wrapper
+// function that will just call it and then perform some sanity
+// checking.
+#define WRAP( with )                                         \
+    [] ( size_t _1, files_range const& _2 ) -> index_lists { \
+        return wrapper( _1, _2, distribution_ ## with );     \
+    }
+
+// This macro will register a strategy (function) in the global
+// map so it can be referred to by name.  The registration will
+// happen automatically when the program loads.
+#define STRATEGY( name ) \
+    STARTUP() { distribute[TOSTRING( name )] = WRAP( name ); }
 
 // Global dictionary is located and populated in this module.
 map<string, distribution_t> distribute;
+
+// This is a wrapper around each of the distribution functions
+// that will perform some sanity checking post facto.  All the
+// distribution functions get run by way of this wrapper.
+index_lists wrapper( size_t             threads,
+                     files_range const& files,
+                     distribution_t     func ) {
+    // Call the actual distribution function.
+    vector<vector<size_t>> thread_idxs = func( threads, files );
+    // Now a sanity check to make sure we got pricisely the
+    // right number of files.
+    size_t count = 0;
+    for( auto const& ti : thread_idxs )
+        count += ti.size();
+    FAIL_( count != files.size() );
+    // Another sanity check to make sure that each index appears
+    // only once both within a single thread and across threads.
+    set<size_t> idxs;
+    for( auto const& ti : thread_idxs ) {
+        for( size_t idx : ti ) {
+            FAIL_( has_key( idxs, idx ) );
+            idxs.insert( idx );
+        }
+    }
+    return move( thread_idxs );
+}
 
 /****************************************************************
  * The functions below will take a number of threads and a list
@@ -89,34 +120,9 @@ index_lists distribution_sliced( size_t             threads,
         thread_idxs[where].push_back( zs.index() );
         ++count;
     }
-    // Now a sanity check to make sure we got pricisely the
-    // right number of files.
-    count = 0;
-    for( auto const& ti : thread_idxs )
-        count += ti.size();
-    FAIL_( count != files.size() );
     return move( thread_idxs );
 }
 STRATEGY( sliced ) // Register this strategy
-
-//________________________________________________________________
-
-// The "folder" strategy will compile a list of all folders
-// along with the number of files they contain.  It will then
-// sort the list of folders by the number of files they contain,
-// and will then iterate through the list of folders and assign
-// each to a thread in a cyclic manner.  The idea behind this
-// strategy is to never assign files from the same folder to
-// more than one thread, but while trying to give each thread
-// roughly the same number of files.
-index_lists distribution_folder( size_t             threads,
-                                 files_range const& files ) {
-    FAIL( true, "folder distribution not implemented" );
-    (void)threads;
-    (void)files;
-    return {};
-}
-STRATEGY( folder ) // Register this strategy
 
 //________________________________________________________________
 
@@ -148,12 +154,6 @@ index_lists distribution_bytes(  size_t             threads,
         thread_idxs[where].push_back( zs.index() );
         totals[where] += zs.size();
     }
-    // Now a sanity check to make sure we got pricisely the
-    // right number of files.
-    size_t count = 0;
-    for( auto const& ti : thread_idxs )
-        count += ti.size();
-    FAIL_( count != files.size() );
     return move( thread_idxs );
 }
 STRATEGY( bytes ) // Register this strategy
@@ -194,12 +194,74 @@ index_lists distribution_runtime(  size_t             threads,
         totals[where] += size_weight * zs.size()
                       +  file_weight * 1;
     }
-    // Now a sanity check to make sure we got pricisely the
-    // right number of files.
-    size_t count = 0;
-    for( auto const& ti : thread_idxs )
-        count += ti.size();
-    FAIL_( count != files.size() );
     return move( thread_idxs );
 }
 STRATEGY( runtime ) // Register this strategy
+
+//________________________________________________________________
+
+// The "folder" strategy will compile a list of all folders along
+// with the number of files they contain.  It will then sort the
+// list of folders by their runtime.  It will then iterate through
+// the list of folders and assign each to a thread in a manner
+// such as to keep runtime of the threads as uniform as possible.
+// The idea behind this strategy is to never assign files from the
+// same folder to more than one thread, but while trying to give
+// each thread roughly the same runtime.  It is like the runtime
+// strategy except that it distributes entire folders instead of
+// individual files.
+index_lists distribution_folder( size_t             threads,
+                                 files_range const& files ) {
+    // This structure will hold information about a single folder:
+    // this includes the metric (runtime in this case) and list of
+    // indexes of files inside this folder.
+    struct Data {
+        Data() : m_metric( 0 ) {}
+        // Add a new file and update the metric.
+        void add( ZipStat const& zs ) {
+            m_idxs.push_back( zs.index() );
+            uint64_t const size_weight = 1;
+            uint64_t const file_weight = 5000000;
+            m_metric += size_weight * zs.size()
+                     +  file_weight * 1;
+        }
+        // These are indexes of files that are in this folder.
+        vector<size_t> m_idxs;
+        size_t         m_metric;
+    };
+    // First we need to aggregate files that are in the same
+    // folder.
+    map<FilePath, Data> folder_map;
+    for( auto const& zs : files )
+        folder_map[zs.folder()].add( zs );
+    // Now copy all the Data objects into a vector for sorting.
+    vector<Data> folder_infos;
+    for( auto p : folder_map )
+        folder_infos.push_back( p.second );
+    // Sort that in descending order (it is important that they
+    // are descending and not ascending) by the runtime.
+    auto by_metric = []( Data const& l, Data const& r ) {
+        return l.m_metric > r.m_metric;
+    };
+    sort( folder_infos.begin(), folder_infos.end(), by_metric );
+    // At this point we have a list of folders along with the
+    // total runtime of each folder, so now just do an equitable
+    // distribution of folders among the threads.
+    vector<vector<size_t>> thread_idxs( threads );
+    vector<size_t>         metrics( threads );
+
+    for( auto const& info : folder_infos ) {
+        auto idx = min_element( metrics.begin(), metrics.end() )
+                 - metrics.begin();
+        FAIL_( idx < 0 || size_t( idx ) >= threads );
+        auto& ti = thread_idxs[idx];
+        // Give all the indexes from this folder to this thread.
+        ti.insert( ti.end(), info.m_idxs.begin(), info.m_idxs.end() );
+        metrics[idx] += info.m_metric;
+    }
+    // At this point the files in a given folder should not be
+    // shared among multiple threads and the estimated runtime
+    // of each thread should be about the same.
+    return move( thread_idxs );
+}
+STRATEGY( folder ) // Register this strategy

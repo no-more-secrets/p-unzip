@@ -54,3 +54,17 @@
     } catch( ... ) {                     \
         LOG( "unknown error" );          \
     }
+
+// This can be used to execute an arbitrary block of code
+// at startup (when the binary is loaded).  It is used
+// like this:
+//
+// STARTUP() {
+//     cout << "some code here";
+// }
+#define STARTUP()                               \
+    struct STRING_JOIN( register_, __LINE__ ) { \
+        STRING_JOIN( register_, __LINE__ )();   \
+    } STRING_JOIN( obj, __LINE__ );             \
+    STRING_JOIN( register_, __LINE__ )::        \
+        STRING_JOIN( register_, __LINE__ )()
