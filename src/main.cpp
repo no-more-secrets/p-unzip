@@ -19,15 +19,21 @@
 #include <array>
 #include <chrono>
 #include <cstdlib>
+#include <iomanip>
+#include <mutex>
 #include <numeric>
 #include <string>
 #include <thread>
-#include <iomanip>
 
 using namespace std;
 
 // Positional args should always be referred to by these.
 size_t const ARG_FILE_NAME = 0;
+
+// This mutex protects logging of file names during unzip.
+// Without this lock the various threads' printing would conflict
+// and lead to messy output.
+mutex log_name_mtx;
 
 /****************************************************************
  * This is the function that will be given to each of the thread
@@ -72,7 +78,10 @@ void unzip( size_t                thread_idx, // input
         size_t size = zip[idx].size();
         // This logging might be turned off since it is probably
         // unnecessary and unreliable anyway.
-        if( !quiet ) LOG( thread_idx << "> " << name );
+        if( !quiet ) {
+            lock_guard<mutex> lock( log_name_mtx );
+            LOG( thread_idx << setw( 2 ) << "> " << name );
+        }
         // Decompress the data and write it to the file in
         // chunks of size equal to uncompressed.size().
         zip.extract_to( idx, name, uncompressed );
