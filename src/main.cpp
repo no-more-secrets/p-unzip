@@ -35,6 +35,10 @@ size_t const ARG_FILE_NAME = 0;
 // and lead to messy output.
 mutex log_name_mtx;
 
+// This enum represents the possible policies for dealing with
+// timestamps when extracting zip files.
+enum class TSPolicy { current, stored, fixed };
+
 /****************************************************************
 * This is the function that will be given to each of the thread
 * objects.  It will create a new zip_source_t and zip_t objects
@@ -49,6 +53,8 @@ void unzip( size_t                thread_idx, // input
             vector<size_t> const& idxs,       // input
             size_t                chunk_size, // input
             bool                  quiet,      // input
+            TSPolicy              tsPolicy,   // input
+            time_t                fixedStamp, // input
             StopWatch&            watch,      // output
             size_t&               files,      // output
             size_t&               bytes,      // output
@@ -87,6 +93,18 @@ void unzip( size_t                thread_idx, // input
         // Decompress the data and write it to the file in
         // chunks of size equal to uncompressed.size().
         zip.extract_to( idx, name, uncompressed );
+        // Now check if we need to set the modificatino time.
+        // If the user has specified "current" then we need
+        // not do anything.  For "stored" we need to get the
+        // value stored in the zip file and use that.  For
+        // "fixed" we need to use the value specified for all
+        // extracted files.
+        if( tsPolicy != TSPolicy::current ) {
+            time_t time = (tsPolicy == TSPolicy::stored)
+                        ? zip[idx].mtime()
+                        : fixedStamp;
+            set_timestamp( name, time );
+        }
         // For auditing / sanity checking purposes.
         files++; bytes += size;
     }
@@ -114,6 +132,39 @@ int main_( options::positional positional,
     * Get miscellaneous options
     ************************************************************/
     bool quiet = has_key( options, 'q' );
+
+    /************************************************************
+    * Determine timestamp policy
+    *************************************************************
+    * The `t` option allows the user to control how timestamps
+    * are set on the extracted files.  If the timestamps are of
+    * no concern then it might be advantageous to specify
+    * "current" which will not set them at all -- it will leave
+    * them to take on the time that they are created/written.
+    * If timestamps are important then "stored" will try to
+    * reproduce those stored in the zip file.  However, note that
+    * zip files do not store timezone, so there will be certain
+    * discrepancies associated with that (local timezone is
+    * assumed when extracting).  If all the files are to have
+    * the same timestamp then we can simply supply an integer
+    * value for the t argument. */
+    TSPolicy tsPolicy = TSPolicy::stored;
+    time_t   fixedStamp;
+    if( has_key( options, 't' ) ) {
+        string t = options['t'].get();
+        if( t == "current" )
+            // Just let the timestamps fall where they may.
+            tsPolicy = TSPolicy::current;
+        else if( t == "stored" )
+            // Use timestmaps stored inside zip file.
+            tsPolicy = TSPolicy::stored;
+        else {
+            // All extracted files should have this timestamp.
+            tsPolicy = TSPolicy::fixed;
+            fixedStamp = atoi( t.c_str() );
+            FAIL( fixedStamp == 0, "invalid integer for t arg" );
+        }
+    }
 
     /************************************************************
     * Determine the number of jobs to use
@@ -287,6 +338,8 @@ int main_( options::positional positional,
                              std::ref( thread_idxs[i] ),
                              chunk_size,
                              quiet,
+                             tsPolicy,
+                             fixedStamp,
                              std::ref( watches[i] ),
                              std::ref( files_count[i] ),
                              std::ref( bytes_count[i] ),

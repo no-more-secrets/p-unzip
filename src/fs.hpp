@@ -35,7 +35,7 @@ public:
 * FilePath
 *****************************************************************
 * This class is an immutable representation of a file path.
-* It only holds relative paths, as opposed to abosolute paths
+* It only holds relative paths, as opposed to absolute paths
 * that are rooted at / (Posix) or a drive letter (Windows). */
 class FilePath {
 
@@ -90,3 +90,15 @@ void mkdir_p( FilePath const& path );
 // the list.  Implementation is efficient in that it will use a
 // a cache to avoid redundant calls to the filesystem.
 void mkdirs_p( std::vector<FilePath> const& paths );
+
+// Set the time stamp of a file given a path.  Will throw if it
+// fails.  Will set both mod time and access time to this value.
+// Since we're using time_t this means the resolution is only at
+// the level of one second, however this is fine here because zip
+// files only have a resolution of two seconds.  The time is
+// interpreted as the epoch time (so it implicitly has a time
+// zone).  However note that zip files do not carry any time zone
+// information, so interpreting a timestamp from a zip file as
+// an epoch time can cause inconsistencies when dealing with
+// zip files that are zipped and unzipped in different timezones.
+void set_timestamp( std::string const& path, time_t time );

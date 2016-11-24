@@ -15,6 +15,15 @@ static char const* info =
     ""                                                       "\n"
     "   -q          : quiet: do not print files names"       "\n"
     ""                                                       "\n"
+    "   -t          : timestamps policy. Can be one of:"     "\n"
+    "                 current - use timestamp at time of"    "\n"
+    "                           writing."                    "\n"
+    "                 stored  - use timestamp archived in"   "\n"
+    "                           zip file, ignoring TZ."      "\n"
+    "                 <sec>   - where <sec> is the epoch"    "\n"
+    "                           time in seconds."            "\n"
+    "                 default behavior is `stored`."         "\n"
+    ""                                                       "\n"
     "   -j N        : use N threads.  In addition to a num-" "\n"
     "                 erical value, N can be one of:"        "\n"
     "                 { MAX, OPT }.  MAX is max threads"     "\n"
@@ -30,7 +39,7 @@ static char const* info =
 // Options that do not take a value
 static auto options_no_val   = { 'h', 'q' };
 // Options that must take a value
-static auto options_val      = { 'j', 'd', 'c' };
+static auto options_val      = { 'j', 'd', 'c', 't' };
 
 // Minimum number of positional arguments that any valid
 // commandline must have.

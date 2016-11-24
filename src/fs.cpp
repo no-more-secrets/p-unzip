@@ -24,6 +24,13 @@ using namespace std;
 #include <sys/types.h>
 #include <sys/stat.h>
 
+// These are for setting time stamps of files
+#ifdef POSIX
+#    include <utime.h>
+#else
+#    include <sys/utime.h>
+#endif
+
 namespace {
 
 /* Holder for file info in a platform-independent format. */
@@ -176,14 +183,14 @@ std::ostream& operator<<( std::ostream& out,
 
 /****************************************************************
 * High-level file system utilities
-****************************************************************/
-/* This is a helper function which will consult a cache
- * before hitting the file system in order to help implement
- * mkdirs_p.  Any FilePath in the cache is assumed to exist. It
- * uses recursion to ensure that a parent path is constructed
- * before its child.  It will not throw if one or more folders
- * already exist, but it will throw if one of them exists but
- * is not a folder. */
+*****************************************************************
+* This is a helper function which will consult a cache
+* before hitting the file system in order to help implement
+* mkdirs_p.  Any FilePath in the cache is assumed to exist. It
+* uses recursion to ensure that a parent path is constructed
+* before its child.  It will not throw if one or more folders
+* already exist, but it will throw if one of them exists but
+* is not a folder. */
 void mkdir_p( set<FilePath>& cache, FilePath const& path ) {
     if( path.empty() || has_key( cache, path ) )
         return;
@@ -215,4 +222,22 @@ void mkdirs_p( std::vector<FilePath> const& paths ) {
     set<FilePath> cache;
     for( auto const& path : paths )
         mkdir_p( cache, path );
+}
+
+// Set the time stamp of a file given a path.  Will throw if it
+// fails.  Will set both mod time and access time to this value.
+// Since we're using time_t this means the resolution is only at
+// the level of one second, however this is fine here because zip
+// files only have a resolution of two seconds.  The time is
+// interpreted as the epoch time (so it implicitly has a time
+// zone).  However note that zip files do not carry any time zone
+// information, so interpreting a timestamp from a zip file as
+// an epoch time can cause inconsistencies when dealing with
+// zip files that are zipped and unzipped in different timezones.
+void set_timestamp( string const& path, time_t time ) {
+    OS_SWITCH( utimbuf, _utimbuf ) times;
+    times.actime  = time;
+    times.modtime = time;
+    auto res = OS_SWITCH( utime, _utime )( path.c_str(), &times );
+    FAIL( res == -1, "failed to set timestamp on " << path );
 }
