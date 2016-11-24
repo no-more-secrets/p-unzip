@@ -1,6 +1,6 @@
 /****************************************************************
- * Command line options processing
- ***************************************************************/
+* Command line options processing
+****************************************************************/
 #include "options.hpp"
 
 #include <stdexcept>
@@ -11,10 +11,10 @@ using namespace std;
 namespace options {
 
 /****************************************************************
- * Arg: container for holder a parameter a labeling it as either
- * an option or non-option (option means starts with a dash).
- * These objects are immutable.
- ***************************************************************/
+* Arg: container for holder a parameter a labeling it as either
+* an option or non-option (option means starts with a dash).
+* These objects are immutable.
+****************************************************************/
 class Arg {
 
 public:
@@ -71,8 +71,8 @@ private:
 };
 
 /****************************************************************
- * Options parser.  Implemented using recursion.
- ***************************************************************/
+* Options parser.  Implemented using recursion.
+****************************************************************/
 bool parse_impl( set<char> const&            options,
                  set<char> const&            with_value,
                  vector<Arg>::const_iterator start,
@@ -136,9 +136,9 @@ bool parse_impl( set<char> const&            options,
 }
 
 /****************************************************************
- * Driver for options parsing.  This is what you should call from
- * main.
- ***************************************************************/
+* Driver for options parsing.  This is what you should call from
+* main.
+****************************************************************/
 bool parse( int              argc,
             char**           argv,
             set<char> const& options_all,

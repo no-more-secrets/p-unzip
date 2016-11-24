@@ -1,7 +1,7 @@
 /****************************************************************
- * File system related functionality.  Both high-level methods
- * as well as platform-dependent function calls.
- ***************************************************************/
+* File system related functionality.  Both high-level methods
+* as well as platform-dependent function calls.
+****************************************************************/
 #include "config.hpp"
 #include "macros.hpp"
 #include "fs.hpp"
@@ -14,8 +14,8 @@
 using namespace std;
 
 /****************************************************************
- * Functions that require platform-specific implementations.
- ***************************************************************/
+* Functions that require platform-specific implementations.
+****************************************************************/
 #ifndef POSIX
 #   include <windows.h>
 #endif
@@ -71,8 +71,8 @@ void create_folder( char const* path ) {
 } // namespace
 
 /****************************************************************
- * File
- ***************************************************************/
+* File
+****************************************************************/
 File::File( string const& s, char const* m ) : mode( m ) {
     FAIL( mode != "rb" && mode != "wb",
         "unrecognized mode " << mode );
@@ -109,8 +109,8 @@ void File::write( Buffer const& buffer, size_t count ) {
 }
 
 /****************************************************************
- * FilePath class
- ***************************************************************/
+* FilePath class
+****************************************************************/
 /* Here we will basically split the path at the forward slashes
  * and store each component in the m_components vector.  We will
  * throw if we are given an absolute path or a path with back-
@@ -175,8 +175,8 @@ std::ostream& operator<<( std::ostream& out,
 }
 
 /****************************************************************
- * High-level file system utilities
- ***************************************************************/
+* High-level file system utilities
+****************************************************************/
 /* This is a helper function which will consult a cache
  * before hitting the file system in order to help implement
  * mkdirs_p.  Any FilePath in the cache is assumed to exist. It

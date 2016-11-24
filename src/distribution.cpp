@@ -1,7 +1,7 @@
 /****************************************************************
- * Interfaces for taking a list of zip entries and distributing
- * the files among a number of threads.
- ***************************************************************/
+* Interfaces for taking a list of zip entries and distributing
+* the files among a number of threads.
+****************************************************************/
 #include "macros.hpp"
 #include "distribution.hpp"
 
@@ -55,10 +55,10 @@ index_lists wrapper( size_t             threads,
 }
 
 /****************************************************************
- * The functions below will take a number of threads and a list
- * of zip entries and will distribute them according to the
- * given strategy.
- ***************************************************************/
+* The functions below will take a number of threads and a list
+* of zip entries and will distribute them according to the
+* given strategy.
+****************************************************************/
 
 // The "cyclic" strategy will first sort the files by path name,
 // then will iterate through the sorted list while cycling

@@ -1,6 +1,6 @@
 /****************************************************************
- * File-system operations
- ***************************************************************/
+* File-system operations
+****************************************************************/
 #pragma once
 
 #include "ptr_resource.hpp"
@@ -10,8 +10,8 @@
 #include <vector>
 
 /****************************************************************
- * Resource manager for C FILE handles
- ***************************************************************/
+* Resource manager for C FILE handles
+****************************************************************/
 class File : public PtrRes<FILE, File> {
 
     std::string mode;
@@ -32,11 +32,11 @@ public:
 };
 
 /****************************************************************
- * FilePath
- ***************************************************************/
-/* This class is an immutable representation of a file path.
- * It only holds relative paths, as opposed to abosolute paths
- * that are rooted at / (Posix) or a drive letter (Windows). */
+* FilePath
+*****************************************************************
+* This class is an immutable representation of a file path.
+* It only holds relative paths, as opposed to abosolute paths
+* that are rooted at / (Posix) or a drive letter (Windows). */
 class FilePath {
 
 public:
@@ -77,15 +77,16 @@ private:
 std::ostream& operator<<( std::ostream& out, FilePath const& path );
 
 /****************************************************************
- * High-level file system functions
- ***************************************************************/
-/* Create folder and all parents, and do not fail if it already
- * exists.  Will throw on any other error.  Note: if you are
- * creating multiple folders in succession then you should use
- * mkdirs_p below as it will be more efficient. */
+* High-level file system functions
+****************************************************************/
+
+// Create folder and all parents, and do not fail if it already
+// exists.  Will throw on any other error.  Note: if you are
+// creating multiple folders in succession then you should use
+// mkdirs_p below as it will be more efficient.
 void mkdir_p( FilePath const& path );
 
-/* Has the effect of calling mkdir_p on each of the elements in
- * the list.  Implementation is efficient in that it will use a
- * a cache to avoid redundant calls to the filesystem. */
+// Has the effect of calling mkdir_p on each of the elements in
+// the list.  Implementation is efficient in that it will use a
+// a cache to avoid redundant calls to the filesystem.
 void mkdirs_p( std::vector<FilePath> const& paths );

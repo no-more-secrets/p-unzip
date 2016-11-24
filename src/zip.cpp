@@ -5,8 +5,8 @@
 using namespace std;
 
 /****************************************************************
- * Zip
- ***************************************************************/
+* Zip
+****************************************************************/
 Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
     // First creat a "zip source" from the raw pointer to the
     // buffer containing the binary data of the zip file.  The
@@ -116,8 +116,8 @@ ZipStat const& Zip::at(size_t idx) const {
 }
 
 /****************************************************************
- * ZipStat
- ***************************************************************/
+* ZipStat
+****************************************************************/
 // This is the zero-based index within the archive of the
 // element represented by this ZipStat.
 zip_uint64_t ZipStat::index() const {

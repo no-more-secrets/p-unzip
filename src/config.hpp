@@ -1,6 +1,6 @@
 /****************************************************************
- * Basic program configuration.
- ***************************************************************/
+* Basic program configuration.
+****************************************************************/
 #pragma once
 
 #include <cstddef>
@@ -38,8 +38,8 @@
 #endif
 
 /****************************************************************
- * Compile-time program parameters
- ***************************************************************/
+* Compile-time program parameters
+****************************************************************/
 // The maximum value that the `-j` parameter can take.
 #define MAX_JOBS 64
 // This is the default distribution strategy to use if the

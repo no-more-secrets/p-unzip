@@ -1,6 +1,6 @@
 /****************************************************************
- * General utilities
- ***************************************************************/
+* General utilities
+****************************************************************/
 #include "macros.hpp"
 #include "utils.hpp"
 
@@ -12,8 +12,8 @@
 using namespace std;
 
 /****************************************************************
- * Convenience methods
- ***************************************************************/
+* Convenience methods
+****************************************************************/
 // Format a quantity of bytes in human readable form.
 std::string human_bytes( size_t bytes ) {
     ostringstream out;
@@ -32,8 +32,8 @@ std::string human_bytes( size_t bytes ) {
 }
 
 /****************************************************************
- * StopWatch
- ***************************************************************/
+* StopWatch
+****************************************************************/
 // Start the clock for a given event name.  If an event with
 // this name already exists then it will be overwritten and
 // any end times for it will be deleted.
@@ -110,8 +110,8 @@ bool StopWatch::event_complete( string const& name ) const {
 }
 
 /****************************************************************
- * Buffer
- ***************************************************************/
+* Buffer
+****************************************************************/
 Buffer::Buffer( size_t length ) : length( length ) {
     FAIL_( !(p = (void*)( new uint8_t[length] )) );
     own = true;

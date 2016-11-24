@@ -1,6 +1,6 @@
 /****************************************************************
- * Program entry point.  Processes command line arguments.
- ***************************************************************/
+* Program entry point.  Processes command line arguments.
+****************************************************************/
 #include "options.hpp"
 #include "usage.hpp"
 

@@ -1,6 +1,6 @@
 /****************************************************************
- * Command line options parsing engine
- ***************************************************************/
+* Command line options parsing engine
+****************************************************************/
 #pragma once
 
 #include "utils.hpp"
@@ -18,8 +18,8 @@ using options    = std::map<char, Optional<std::string>>;
 using opt_result = std::pair<positional, options>;
 
 /****************************************************************
- * This does the full parsing of the arguments
- ***************************************************************/
+* This does the full parsing of the arguments
+****************************************************************/
 bool parse( int                   argc,
             char**                argv,
             std::set<char> const& options_all,

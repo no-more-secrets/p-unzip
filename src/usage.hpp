@@ -1,7 +1,8 @@
 /****************************************************************
- * Application-specific data describing the kinds of command line
- * arguments and flags that are expected/allowed/required.
- ***************************************************************/
+* Application-specific data describing the kinds of command line
+* arguments and flags that are expected/allowed/required.  This
+* header is only intended to be included by a single module.
+****************************************************************/
 #pragma once
 
 namespace usage {

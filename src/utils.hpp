@@ -1,6 +1,6 @@
 /****************************************************************
- * General utilities
- ***************************************************************/
+* General utilities
+****************************************************************/
 #pragma once
 
 #include "macros.hpp"
@@ -13,8 +13,8 @@
 #include <vector>
 
 /****************************************************************
- * Convenience methods
- ***************************************************************/
+* Convenience methods
+****************************************************************/
 // Format a quantity of bytes in human readable form.
 std::string human_bytes( size_t bytes );
 
@@ -57,8 +57,8 @@ auto maximum( It start, It end, KeyF f ) -> decltype( *start ) {
 }
 
 /****************************************************************
- * StopWatch
- ***************************************************************/
+* StopWatch
+****************************************************************/
 /* This class can be used to mark start/stop times of various
  * events and to get the durations in various useful forms. */
 class StopWatch {
@@ -107,11 +107,11 @@ private:
 };
 
 /****************************************************************
- * Range class for turning pairs of iterators into iterables.
- * The future ranges library will probably do this better.  At
- * the moment this will only work for random access iterators
- * because of the size().
- ***************************************************************/
+* Range class for turning pairs of iterators into iterables.
+* The future ranges library will probably do this better.  At
+* the moment this will only work for random access iterators
+* because of the size().
+****************************************************************/
 template<typename T>
 class Range {
 
@@ -142,8 +142,8 @@ Range<T> make_range( T begin, T end ) {
 }
 
 /****************************************************************
- * Resource manager for raw buffers
- ***************************************************************/
+* Resource manager for raw buffers
+****************************************************************/
 class Buffer : public PtrRes<void, Buffer> {
 
     size_t length;
@@ -168,10 +168,10 @@ public:
 };
 
 /****************************************************************
- * Optional: Struct for holding a value that either is there or
- * isn't.  This could be replaced with std::optional when we
- * have C++17 compilers available.
- ***************************************************************/
+* Optional: Struct for holding a value that either is there or
+* isn't.  This could be replaced with std::optional when we
+* have C++17 compilers available.
+****************************************************************/
 template<typename T>
 struct Optional {
 

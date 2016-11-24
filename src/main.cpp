@@ -1,13 +1,13 @@
 /****************************************************************
- * p-unzip: the multithreaded unzipper
- *
- * author:  David P. Sicilia
- *
- * This program will take a zip file as input and a number of
- * threads and it will distribute the files in the archive among
- * the threads in the specified way in order to take advantage of
- * the opportunity for parallelism while unzipping an archive.
- ***************************************************************/
+* p-unzip: the multithreaded unzipper
+*
+* author:  David P. Sicilia
+*
+* This program will take a zip file as input and a number of
+* threads and it will distribute the files in the archive among
+* the threads in the specified way in order to take advantage of
+* the opportunity for parallelism while unzipping an archive.
+****************************************************************/
 #include "config.hpp"
 #include "distribution.hpp"
 #include "fs.hpp"
@@ -36,14 +36,14 @@ size_t const ARG_FILE_NAME = 0;
 mutex log_name_mtx;
 
 /****************************************************************
- * This is the function that will be given to each of the thread
- * objects.  It will create a new zip_source_t and zip_t objects
- * out of the original zip-file buffer (since we don't know if
- * we can share a zip_t object among threads) and it will then
- * proceed to extract the files that it has been assigned,
- * represented by the vector of indices into the list of
- * archived files.
- ***************************************************************/
+* This is the function that will be given to each of the thread
+* objects.  It will create a new zip_source_t and zip_t objects
+* out of the original zip-file buffer (since we don't know if
+* we can share a zip_t object among threads) and it will then
+* proceed to extract the files that it has been assigned,
+* represented by the vector of indices into the list of
+* archived files.
+****************************************************************/
 void unzip( size_t                thread_idx, // input
             Buffer::SP&           zip_buffer, // input
             vector<size_t> const& idxs,       // input
@@ -76,8 +76,10 @@ void unzip( size_t                thread_idx, // input
         string name( zip[idx].name() );
         // Get size of the uncompressed data of entry.
         size_t size = zip[idx].size();
-        // This logging might be turned off since it is probably
-        // unnecessary and unreliable anyway.
+        // If the caller chooses, we log the name of the file
+        // being unzipped by protect the logging with a mutex
+        // otherwise different threads will step on each other
+        // causing jumbled output.
         if( !quiet ) {
             lock_guard<mutex> lock( log_name_mtx );
             LOG( thread_idx << setw( 2 ) << "> " << name );
@@ -96,10 +98,10 @@ void unzip( size_t                thread_idx, // input
 }
 
 /****************************************************************
- * Entrypoint into program.  This is called by a wrapper that
- * handles parsing commandline parameters which are then
- * delivered, already syntax checked, as data structures.
- ***************************************************************/
+* Entrypoint into program.  This is called by a wrapper that
+* handles parsing commandline parameters which are then
+* delivered, already syntax checked, as data structures.
+****************************************************************/
 int main_( options::positional positional,
            options::options    options )
 {
@@ -109,13 +111,13 @@ int main_( options::positional positional,
     watch.start( "total" ); // Even representing total runtime.
 
     /************************************************************
-     * Get miscellaneous options
-     ************************************************************/
+    * Get miscellaneous options
+    ************************************************************/
     bool quiet = has_key( options, 'q' );
 
     /************************************************************
-     * Determine the number of jobs to use
-     ************************************************************/
+    * Determine the number of jobs to use
+    ************************************************************/
     // First initialize the number of jobs to its default value.
     size_t jobs = 1;
     // Next, let's get the number of threads that the machine
@@ -152,9 +154,9 @@ int main_( options::positional positional,
     FAIL( jobs > MAX_JOBS, "max allowed jobs is " << MAX_JOBS );
 
     /************************************************************
-     * Load the zip file and parse list of entries (but do not
-     * yet start decompressing).
-     ************************************************************/
+    * Load the zip file and parse list of entries (but do not
+    * yet start decompressing).
+    ************************************************************/
     // The zip file name will be one of the positional arguments.
     string filename = positional[ARG_FILE_NAME];
 
@@ -193,19 +195,19 @@ int main_( options::positional positional,
     watch.stop( "load_zip" );
 
     /************************************************************
-     * Determine the chunk size
-     ************************************************************/
-    // When extracting a file from the zip archive, the chunk
-    // size is the number of bytes that are decompressed and
-    // written to the output file at a time.  The user can
-    // specify "max" which will write the entire file at once,
-    // however this requires being able to hold the entire
-    // decompressed file in memory at once (and for every thread).
-    // With zip files that contain large files together with
-    // multithreaded execution it is desireable to limit the
-    // chunk size to save memory.  Also, this allows you to
-    // control size of the blocks that are written to disk which
-    // may have an effect on disk write throughput.
+    * Determine the chunk size
+    *************************************************************
+    * When extracting a file from the zip archive, the chunk
+    * size is the number of bytes that are decompressed and
+    * written to the output file at a time.  The user can
+    * specify "max" which will write the entire file at once,
+    * however this requires being able to hold the entire
+    * decompressed file in memory at once (and for every thread).
+    * With zip files that contain large files together with
+    * multithreaded execution it is desireable to limit the
+    * chunk size to save memory.  Also, this allows you to
+    * control size of the blocks that are written to disk which
+    * may have an effect on disk write throughput. */
     size_t chunk_size = DEFAULT_CHUNK;
     if( has_key( options, 'c' ) ) {
         string c = options['c'].get();
@@ -227,17 +229,17 @@ int main_( options::positional positional,
     FAIL( chunk_size < 1, "Invalid chunk size" );
 
     /************************************************************
-     * Pre-create folder structure
-     ************************************************************/
-    // In a parallel unzip we must pre-create all of the folders
-    // that are mentioned in the zip file either explicitely or
-    // implicitely.  If we attempt to do this within the worker
-    // threads then we would likely have race conditions and
-    // write conflicts.  So this way, when the worker threads
-    // start, all of the necessary folders are already there.
-    // First, we will gather all the folder names that are
-    // mentioned both in the archive explicitly through folder
-    // entries or implicitely as the paths to files.
+    * Pre-create folder structure
+    *************************************************************
+    * In a parallel unzip we must pre-create all of the folders
+    * that are mentioned in the zip file either explicitely or
+    * implicitely.  If we attempt to do this within the worker
+    * threads then we would likely have race conditions and
+    * write conflicts.  So this way, when the worker threads
+    * start, all of the necessary folders are already there.
+    * First, we will gather all the folder names that are
+    * mentioned both in the archive explicitly through folder
+    * entries or implicitely as the paths to files. */
     vector<FilePath> fps;
     for( auto const& zs : stats )
         fps.push_back( zs.folder() );
@@ -245,9 +247,9 @@ int main_( options::positional positional,
     watch.run( "folders", [&fps]{ mkdirs_p( fps ); } );
 
     /************************************************************
-     * Distribution of files to the threads
-     ************************************************************/
-    // See if the user has specified a distribution strategy.
+    * Distribution of files to the threads
+    *************************************************************
+    * See if the user has specified a distribution strategy. */
     string strategy = has_key( options, 'd' ) ? options['d'].get()
                                               : DEFAULT_DIST;
     FAIL( !has_key( distribute, strategy ), "strategy " <<
@@ -262,10 +264,10 @@ int main_( options::positional positional,
     FAIL_( thread_idxs.size() != jobs );
 
     /************************************************************
-     * Start multithreaded unzip
-     ************************************************************/
-    // These will be populated by the threads as the work and
-    // and then checked at the end as a sanity check.
+    * Start multithreaded unzip
+    *************************************************************
+    * These will be populated by the threads as the work and
+    * and then checked at the end as a sanity check. */
     vector<size_t> files_count( jobs, 0 );
     vector<size_t> bytes_count( jobs, 0 );
     // vector<bool> is no good here since we need to extract
@@ -297,8 +299,8 @@ int main_( options::positional positional,
         FAIL_( !results[i] );
 
     /************************************************************
-     * Print out diagnostics
-     ************************************************************/
+    * Print out diagnostics
+    ************************************************************/
     watch.stop( "total" ); // End program runtime.
 
     #define BYTES( a ) left << setw(11) << a <<        \

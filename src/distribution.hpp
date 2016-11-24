@@ -1,7 +1,7 @@
 /****************************************************************
- * Interfaces for taking a list of zip entries and distributing
- * the files among a number of threads.
- ***************************************************************/
+* Interfaces for taking a list of zip entries and distributing
+* the files among a number of threads.
+****************************************************************/
 #pragma once
 
 #include "utils.hpp"
