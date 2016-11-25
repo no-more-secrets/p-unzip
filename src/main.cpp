@@ -368,9 +368,7 @@ int main_( options::positional positional,
                        (" (" + human_bytes( a ) + ")")
 
     LOGP( "file",       filename       );
-    LOGP( "jobs",       jobs           );
-    LOGP( "threads",    num_threads    );
-    LOGP( "entries",    z.size()       );
+    LOGP( "jobs",       jobs << " / " << num_threads );
     LOGP( "files",      files.size()   );
     LOGP( "folders",    folders.size() );
     LOGP( "strategy",   strategy       );
@@ -379,31 +377,34 @@ int main_( options::positional positional,
     LOGP( "max size",   BYTES( max_size ) );
 
     LOG( "" );
-    size_t files_written = 0;
-    for( size_t i = 0; i < jobs; ++i ) {
-        LOGP( "thread " << i+1 << " files",
-            left << setw(22) << outputs[i].files <<
-            " [" << outputs[i].watch.human( "unzip" ) << "]" );
-        files_written += outputs[i].files;
+    size_t files_written = 0, job = 1;
+    job = 0;
+    for( auto const& o : outputs ) {
+        LOGP( "files: thread " << job++,
+            left << setw(22) << o.files <<
+            " [" << o.watch.human( "unzip" ) << "]" );
+        files_written += o.files;
     }
 
     // Make sure that the sum of files counts for each thread
     // equals the total number of files in the zip.
-    LOGP( "total files", files_written );
+    LOGP( "files: total", files_written );
     FAIL_( files_written != files.size() );
 
     LOG( "" );
-    for( size_t i = 0; i < jobs; ++i )
-        LOGP( "thread " << i+1 << " bytes",
-            BYTES( outputs[i].bytes ) <<
-            " [" << outputs[i].watch.human( "unzip" ) << "]" );
-
     size_t bytes = 0;
-    for( auto const& o : outputs ) bytes += o.bytes;
-    LOGP( "total bytes", BYTES( bytes ) );
+    job = 0;
+    for( auto const& o : outputs ) {
+        LOGP( "bytes: thread " << job++,
+            BYTES( o.bytes ) <<
+            " [" << o.watch.human( "unzip" ) << "]" );
+        bytes += o.bytes;
+    }
+
+    LOGP( "bytes: total", BYTES( bytes ) );
     size_t total_in_zip = 0;
-    for( size_t i = 0; i < z.size(); ++i )
-        total_in_zip += z[i].size();
+    for( auto const& zs : z )
+        total_in_zip += zs.size();
     FAIL_( total_in_zip != bytes );
 
     LOG( "" );

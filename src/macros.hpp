@@ -38,7 +38,7 @@
 #define LOGP( a, b ) {                                         \
     std::ostringstream out_k, out_v;                           \
     out_k << a; out_v << b;                                    \
-    LOG( std::setw( 18 ) << std::left << out_k.str()           \
+    LOG( std::setw( 17 ) << std::left << out_k.str()           \
          << ": " << out_v.str() );                             \
 }
 
