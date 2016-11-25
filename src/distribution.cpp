@@ -23,7 +23,7 @@ using namespace std;
 // map so it can be referred to by name.  The registration will
 // happen automatically when the program loads.
 #define STRATEGY( name ) \
-    STARTUP() { distribute[TOSTRING( name )] = WRAP( name ); }
+    STARTUP() { distribute[TO_STRING( name )] = WRAP( name ); }
 
 // Global dictionary is located and populated in this module.
 map<string, distribution_t> distribute;
@@ -200,18 +200,18 @@ STRATEGY( runtime ) // Register this strategy
 
 //________________________________________________________________
 
-// The "folder" strategy will compile a list of all folders along
-// with the number of files they contain.  It will then sort the
-// list of folders by their runtime.  It will then iterate through
-// the list of folders and assign each to a thread in a manner
-// such as to keep runtime of the threads as uniform as possible.
-// The idea behind this strategy is to never assign files from the
-// same folder to more than one thread, but while trying to give
-// each thread roughly the same runtime.  It is like the runtime
-// strategy except that it distributes entire folders instead of
-// individual files.
-index_lists distribution_folder( size_t             threads,
-                                 files_range const& files ) {
+// The "folder_runtime" strategy will compile a list of all
+// folders along with the number of files they contain.  It will
+// then sort the list of folders by their runtime.  It will then
+// iterate through the list of folders and assign each to a thread
+// in a manner such as to keep runtime of the threads as uniform
+// as possible.  The idea behind this strategy is to never assign
+// files from the same folder to more than one thread, but while
+// trying to give each thread roughly the same runtime.  It is
+// like the runtime strategy except that it distributes entire
+// folders instead of individual files.
+index_lists distribution_folder_runtime( size_t             threads,
+                                         files_range const& files ) {
     // This structure will hold information about a single folder:
     // this includes the metric (runtime in this case) and list of
     // indexes of files inside this folder.
@@ -264,4 +264,4 @@ index_lists distribution_folder( size_t             threads,
     // of each thread should be about the same.
     return move( thread_idxs );
 }
-STRATEGY( folder ) // Register this strategy
+STRATEGY( folder_runtime ) // Register this strategy
