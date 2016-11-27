@@ -8,21 +8,22 @@
 * the threads in the specified way in order to take advantage of
 * the opportunity for parallelism while unzipping an archive.
 ****************************************************************/
-#include "config.hpp"
-#include "distribution.hpp"
-#include "fs.hpp"
+//#include "config.hpp"
+//#include "distribution.hpp"
+//#include "fs.hpp"
 #include "options.hpp"
-#include "utils.hpp"
-#include "zip.hpp"
+//#include "utils.hpp"
+#include "unzip.hpp"
+//#include "zip.hpp"
 
-#include <algorithm>
-#include <array>
-#include <chrono>
+//#include <algorithm>
+//#include <array>
+//#include <chrono>
 #include <cstdlib>
-#include <iomanip>
-#include <mutex>
-#include <numeric>
-#include <string>
+//#include <iomanip>
+//#include <mutex>
+//#include <numeric>
+//#include <string>
 #include <thread>
 
 using namespace std;
@@ -30,119 +31,15 @@ using namespace std;
 // Positional args should always be referred to by these.
 size_t const ARG_FILE_NAME = 0;
 
-// This enum represents the possible policies for dealing with
-// timestamps when extracting zip files.
-enum class TSPolicy { current, stored, fixed };
-
-// This is the structure that is used to hold data output by
-// the threads.
-struct thread_output {
-    // The thread will record timing info here so that we can
-    // e.g. understand the runtime actually spent in each thread.
-    StopWatch            watch;
-    // Total number of files written by this thread.  This is
-    // for diagnostics and sanity checking.
-    size_t               files;
-    // Total number of bytes written by this thread.  This is
-    // for diagnostics and sanity checking.
-    size_t               bytes;
-    // The return value of the thread (success/failure) is here.
-    // This is used because we don't allow exceptions to leave
-    // the threads.
-    bool                 ret;
-};
-
 /****************************************************************
-* This is the function that will be given to each of the thread
-* objects.  It will create a new zip_source_t and zip_t objects
-* out of the original zip-file buffer (since we don't know if
-* we can share a zip_t object among threads) and it will then
-* proceed to extract the files that it has been assigned,
-* represented by the vector of indices into the list of
-* archived files.
-****************************************************************/
-void unzip( size_t                thread_idx,
-            Buffer::SP&           zip_buffer,
-            vector<size_t> const& idxs,
-            size_t                chunk_size,
-            bool                  quiet,
-            TSPolicy              tsPolicy,
-            time_t                fixedStamp,
-            thread_output&        data )
-{
-    // This mutex protects logging of file names during unzip.
-    // Without this lock the various threads' printing would conflict
-    // and lead to messy output.
-    static mutex log_name_mtx;
-
-    data.ret = false; // assume we fail unless we succeed.
-    TRY
-    // Start the clock.  Each thread reports its total runtime.
-    data.watch.start("unzip");
-    // Create the zip here because we don't know if libzip or
-    // zlib are thread safe.  All that the Zip creation will
-    // do here is to change the ref count on the buffer which
-    // is thread safe since it's a shared_ptr.
-    Zip zip( zip_buffer );
-    // Allocate a new buffer for use only within this thread
-    // that is large enough to hold any single uncompressed
-    // file in the archive.
-    Buffer uncompressed( chunk_size );
-    // Now just loop over each entry
-    for( auto idx : idxs ) {
-        // This will be the file name.  It should never be
-        // a folder name (i.e., ending in forward slash)
-        // since those should have already been filtered out
-        // and pre-created.
-        string name( zip[idx].name() );
-        // Get size of the uncompressed data of entry.
-        size_t size = zip[idx].size();
-        // If the caller chooses, we log the name of the file
-        // being unzipped by protect the logging with a mutex
-        // otherwise different threads will step on each other
-        // causing jumbled output.
-        if( !quiet ) {
-            lock_guard<mutex> lock( log_name_mtx );
-            LOG( thread_idx << setw( 2 ) << "> " << name );
-        }
-        // Decompress the data and write it to the file in
-        // chunks of size equal to uncompressed.size().
-        zip.extract_to( idx, name, uncompressed );
-        // Now check if we need to set the modificatino time.
-        // If the user has specified "current" then we need
-        // not do anything.  For "stored" we need to get the
-        // value stored in the zip file and use that.  For
-        // "fixed" we need to use the value specified for all
-        // extracted files.
-        if( tsPolicy != TSPolicy::current ) {
-            time_t time = (tsPolicy == TSPolicy::stored)
-                        ? zip[idx].mtime()
-                        : fixedStamp;
-            set_timestamp( name, time );
-        }
-        // For auditing / sanity checking purposes.
-        data.files++; data.bytes += size;
-    }
-
-    data.ret = true; // return success
-    CATCH_ALL
-    // Stop the clock; we will always get here even on exception.
-    data.watch.stop("unzip");
-}
-
-/****************************************************************
-* Entrypoint into program.  This is called by a wrapper that
-* handles parsing commandline parameters which are then
-* delivered, already syntax checked, as data structures.
+* Entrypoint into program from the arg parsing framework.  This
+* is called by a wrapper that handles parsing commandline
+* parameters which are then delivered, already syntax checked, as
+* data structures.
 ****************************************************************/
 int main_( options::positional positional,
            options::options    options )
 {
-    // This will be used to register start/end times for each
-    // of the tasks.
-    StopWatch watch;
-    watch.start( "total" ); // Even representing total runtime.
-
     /************************************************************
     * Get miscellaneous options
     ************************************************************/
@@ -163,21 +60,30 @@ int main_( options::positional positional,
     * assumed when extracting).  If all the files are to have
     * the same timestamp then we can simply supply an integer
     * value for the t argument. */
-    TSPolicy tsPolicy = TSPolicy::stored;
-    time_t   fixedStamp;
+    enum class TSPolicy {
+        current,    // Use time when file is decompressed
+        stored,     // Use time in zip file (no timezone)
+        stored_alt, // Use stored time but alter it
+        fixed
+    };
+    // By default we just use the "id" function that will use
+    // the exact timestamp stored in the zip.  Note however that
+    // this does not account for time zone.
+    auto id_transform = []( time_t t ){ return t; };
+    TSXFormer ts_transform( id_transform );
     if( has_key( options, 't' ) ) {
         string t = options['t'].get();
         if( t == "current" )
             // Just let the timestamps fall where they may.
-            tsPolicy = TSPolicy::current;
+            ts_transform = []( time_t ){ return 0; };
         else if( t == "stored" )
             // Use timestmaps stored inside zip file.
-            tsPolicy = TSPolicy::stored;
+            ts_transform = id_transform;
         else {
             // All extracted files should have this timestamp.
-            tsPolicy = TSPolicy::fixed;
-            fixedStamp = atoi( t.c_str() );
+            time_t fixedStamp = atoi( t.c_str() );
             FAIL( fixedStamp == 0, "invalid integer for t arg" );
+            ts_transform = [=]( time_t ){ return fixedStamp; };
         }
     }
 
@@ -217,48 +123,12 @@ int main_( options::positional positional,
     }
     // No matter how we got number of jobs, check it one last time.
     FAIL( jobs < 1, "invalid number of jobs: " << jobs );
-    FAIL( jobs > MAX_JOBS, "max allowed jobs is " << MAX_JOBS );
 
     /************************************************************
-    * Load the zip file and parse list of entries (but do not
-    * yet start decompressing).
+    * Get zip file name
     ************************************************************/
     // The zip file name will be one of the positional arguments.
     string filename = positional[ARG_FILE_NAME];
-
-    watch.start( "load_zip" );
-    // Open the zip file, read it completely into a buffer,
-    // then manage the buffer with a shared pointer.  This is
-    // because the buffer will be used possibly by many zip
-    // objects, and we must ensure that it stays alive until
-    // they are all finished.
-    Buffer::SP zip_buffer =
-        make_shared<Buffer>( File( filename, "rb" ).read() );
-
-    // This will take the contents of the zip file (which are
-    // now in the buffer) and will scan the tables at the end
-    // of the zip to gather information about the stats of
-    // the files in the archive.  However, it will not do any
-    // decompression or extraction.
-    Zip z( zip_buffer );
-
-    // Now find the maximum (uncompressed) size of all the
-    // entries in the archive.
-    auto getter   = []( ZipStat const& zs ) { return zs.size(); };
-    auto max_size = getter( maximum( z.begin(), z.end(), getter ) );
-
-    // Create a copy of z's underlying vector of ZipStats so
-    // that we can reorder them.  Note that the resultant vector
-    // will have views taken off of it so must remain alive.
-    vector<ZipStat> stats( z.begin(), z.end() );
-    auto folders_end = partition( stats.begin(), stats.end(),
-        []( ZipStat const& zs ){ return zs.is_folder(); });
-    auto folders = make_range( stats.begin(), folders_end );
-    auto files   = make_range( folders_end,   stats.end() );
-
-    // Time how long it takes to load the zip and handle the
-    // ZipStat data structures.
-    watch.stop( "load_zip" );
 
     /************************************************************
     * Determine the chunk size
@@ -279,8 +149,10 @@ int main_( options::positional positional,
         string c = options['c'].get();
         if( c == "max" )
             // Use the max file size in the zip as chunk size.
-            // Warning: this can cause allocation failures.
-            chunk_size = max_size;
+            // (the zero will be replaced with max file size
+            // later when its value is known).  WARNING: this
+            // can cause allocation failures.
+            chunk_size = 0;
         else
             // atoi should apparently return zero when the
             // conversion cannot be performed, which, luckily
@@ -295,124 +167,63 @@ int main_( options::positional positional,
     FAIL( chunk_size < 1, "Invalid chunk size" );
 
     /************************************************************
-    * Pre-create folder structure
-    *************************************************************
-    * In a parallel unzip we must pre-create all of the folders
-    * that are mentioned in the zip file either explicitely or
-    * implicitely.  If we attempt to do this within the worker
-    * threads then we would likely have race conditions and
-    * write conflicts.  So this way, when the worker threads
-    * start, all of the necessary folders are already there.
-    * First, we will gather all the folder names that are
-    * mentioned both in the archive explicitly through folder
-    * entries or implicitely as the paths to files. */
-    vector<FilePath> fps;
-    for( auto const& zs : stats )
-        fps.push_back( zs.folder() );
-    // Now we ensure that each one exists.
-    watch.run( "folders", [&fps]{ mkdirs_p( fps ); } );
-
-    /************************************************************
     * Distribution of files to the threads
     *************************************************************
     * See if the user has specified a distribution strategy. */
     string strategy = has_key( options, 'd' ) ? options['d'].get()
                                               : DEFAULT_DIST;
-    FAIL( !has_key( distribute, strategy ), "strategy " <<
-        strategy << " is invalid." );
-    // Do the distribution.  The result should be a vector of
-    // length equal to the number of jobs.  Each element should
-    // itself be a vector if indexs representing files assigned
-    // to that thread for extraction.
-    watch.start( "distribute" );
-    auto thread_idxs = distribute[strategy]( jobs, files );
-    watch.stop( "distribute" );
-    FAIL_( thread_idxs.size() != jobs );
 
     /************************************************************
-    * Start multithreaded unzip
-    *************************************************************
-    * These will be populated by the threads as the work and
-    * and then checked at the end as a sanity check. */
-    vector<thread_output> outputs( jobs );
-    vector<thread>        threads( jobs );
-
-    watch.start( "unzip" );
-
-    for( size_t i = 0; i < jobs; ++i )
-        threads[i] = thread( unzip,
-                             i,
-                             std::ref( zip_buffer ),
-                             std::ref( thread_idxs[i] ),
-                             chunk_size,
-                             quiet,
-                             tsPolicy,
-                             fixedStamp,
-                             std::ref( outputs[i] ) );
-
-    for( auto& t : threads )
-        t.join();
-
-    watch.stop( "unzip" );
-
-    for( size_t i = 0; i < jobs; ++i )
-        FAIL_( !outputs[i].ret );
+    * Unzip
+    ************************************************************/
+    UnzipSummary summary(
+        p_unzip( filename, quiet, jobs, strategy, chunk_size,
+                 ts_transform )
+    );
 
     /************************************************************
     * Print out diagnostics
     ************************************************************/
-    watch.stop( "total" ); // End program runtime.
-
     #define BYTES( a ) left << setw(11) << a <<        \
                        left << setw(11) <<             \
                        (" (" + human_bytes( a ) + ")")
 
+    if( !chunk_size )
+        chunk_size = summary.max_size;
+
     LOGP( "file",       filename       );
     LOGP( "jobs",       jobs << " / " << num_threads );
-    LOGP( "files",      files.size()   );
-    LOGP( "folders",    folders.size() );
+    LOGP( "files",      summary.files   );
+    LOGP( "folders",    summary.folders );
     LOGP( "strategy",   strategy       );
     LOGP( "chunk",      chunk_size     );
     LOGP( "chunks_mem", BYTES( chunk_size*jobs ) );
-    LOGP( "max size",   BYTES( max_size ) );
+    LOGP( "max size",   BYTES( summary.max_size ) );
 
     LOG( "" );
-    size_t files_written = 0, job = 1;
-    job = 0;
-    for( auto const& o : outputs ) {
-        LOGP( "files: thread " << job++,
-            left << setw(22) << o.files <<
-            " [" << o.watch.human( "unzip" ) << "]" );
-        files_written += o.files;
+    for( size_t i = 0; i < jobs; ++i ) {
+        LOGP( "files: thread " << i+1,
+            left << setw(22) << summary.files_ts[i] <<
+            " [" << summary.watches[i].human( "unzip" ) << "]" );
     }
 
-    // Make sure that the sum of files counts for each thread
-    // equals the total number of files in the zip.
-    LOGP( "files: total", files_written );
-    FAIL_( files_written != files.size() );
+    LOGP( "files: total", summary.files );
 
     LOG( "" );
-    size_t bytes = 0;
-    job = 0;
-    for( auto const& o : outputs ) {
-        LOGP( "bytes: thread " << job++,
-            BYTES( o.bytes ) <<
-            " [" << o.watch.human( "unzip" ) << "]" );
-        bytes += o.bytes;
+    for( size_t i = 0; i < jobs; ++i ) {
+        LOGP( "bytes: thread " << i+1,
+            BYTES( summary.bytes_ts[i] ) <<
+            " [" << summary.watches[i].human( "unzip" ) << "]" );
     }
 
-    LOGP( "bytes: total", BYTES( bytes ) );
-    size_t total_in_zip = 0;
-    for( auto const& zs : z )
-        total_in_zip += zs.size();
-    FAIL_( total_in_zip != bytes );
+    LOGP( "bytes: total", BYTES( summary.bytes ) );
 
     LOG( "" );
     // Log all the times that we measured but put "total" last.
-    for( auto&& result : watch.results() )
+    for( auto&& result : summary.watch.results() )
         if( result.first != "total" )
             LOGP( "time: " << result.first, result.second );
-    LOGP( "time: total", watch.human( "total" ) );
+    LOGP( "time: total", summary.watch.human( "total" ) );
 
     return 0;
 }

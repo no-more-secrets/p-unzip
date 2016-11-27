@@ -193,4 +193,5 @@ public:
         return value;
     }
 
+    operator bool() const { return has_value; }
 };

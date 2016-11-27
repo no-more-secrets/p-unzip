@@ -26,14 +26,14 @@ using namespace std;
     STARTUP() { distribute[TO_STRING( name )] = WRAP( name ); }
 
 // Global dictionary is located and populated in this module.
-map<string, distribution_t> distribute;
+map<string, distributor_t> distribute;
 
 // This is a wrapper around each of the distribution functions
 // that will perform some sanity checking post facto.  All the
 // distribution functions get run by way of this wrapper.
 index_lists wrapper( size_t             threads,
                      files_range const& files,
-                     distribution_t     func ) {
+                     distributor_t      func ) {
     // Call the actual distribution function.
     vector<vector<size_t>> thread_idxs = func( threads, files );
     // Now a sanity check to make sure we got pricisely the
@@ -51,7 +51,7 @@ index_lists wrapper( size_t             threads,
             idxs.insert( idx );
         }
     }
-    return move( thread_idxs );
+    return thread_idxs;
 }
 
 /****************************************************************
@@ -71,7 +71,7 @@ index_lists distribution_cyclic( size_t             threads,
     size_t count = 0;
     for( auto& zs : files )
         thread_idxs[count++ % threads].push_back( zs.index() );
-    return move( thread_idxs );
+    return thread_idxs;
 }
 STRATEGY( cyclic ) // Register this strategy
 
@@ -120,7 +120,7 @@ index_lists distribution_sliced( size_t             threads,
         thread_idxs[where].push_back( zs.index() );
         ++count;
     }
-    return move( thread_idxs );
+    return thread_idxs;
 }
 STRATEGY( sliced ) // Register this strategy
 
@@ -154,7 +154,7 @@ index_lists distribution_bytes(  size_t             threads,
         thread_idxs[where].push_back( zs.index() );
         totals[where] += zs.size();
     }
-    return move( thread_idxs );
+    return thread_idxs;
 }
 STRATEGY( bytes ) // Register this strategy
 
@@ -194,7 +194,7 @@ index_lists distribution_runtime(  size_t             threads,
         totals[where] += size_weight * zs.size()
                       +  file_weight * 1;
     }
-    return move( thread_idxs );
+    return thread_idxs;
 }
 STRATEGY( runtime ) // Register this strategy
 
@@ -262,6 +262,6 @@ index_lists distribution_folder_runtime( size_t             threads,
     // At this point the files in a given folder should not be
     // shared among multiple threads and the estimated runtime
     // of each thread should be about the same.
-    return move( thread_idxs );
+    return thread_idxs;
 }
 STRATEGY( folder_runtime ) // Register this strategy
