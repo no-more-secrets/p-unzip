@@ -34,6 +34,13 @@ inline bool ends_with( std::string const& s, char c ) {
     return s.size() > 0 && s[s.size()-1] == c;
 }
 
+template<typename T>
+std::string to_string( T const& x ) {
+    ostringstream ss;
+    ss << x;
+    return ss.str();
+};
+
 // This functino will find the maximum over an iterable given a
 // key function.  The key function will be applied to each
 // element of the iterable to yield a key, then the keys will be

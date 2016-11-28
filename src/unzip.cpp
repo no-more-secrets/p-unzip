@@ -18,6 +18,10 @@ namespace {
 // of data to the caller from a single thread.  Among this data
 // is the return value.
 struct thread_output {
+
+    thread_output()
+        : watch(), files( 0 ), bytes( 0 ), ret( false ) {}
+
     // The thread will record timing info here so that we can
     // e.g. understand the runtime actually spent in each thread.
     StopWatch            watch;
@@ -83,7 +87,8 @@ void unzip_worker( size_t                thread_idx,
         // causing jumbled output.
         if( !quiet ) {
             lock_guard<mutex> lock( log_name_mtx );
-            LOG( thread_idx << setw( 2 ) << "> " << name );
+            LOG( left << setw( 4 ) <<
+                 to_string( thread_idx ) + "> " << name );
         }
         // Decompress the data and write it to the file in
         // chunks of size equal to uncompressed.size().
@@ -148,12 +153,6 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
     auto key = [&]( string const& s ) -> ostream& {
         out << left << setw(17) << s << ": ";
         return out;
-    };
-
-    auto to_string = []( size_t x ) -> string {
-        ostringstream ss;
-        ss << x;
-        return ss.str();
     };
 
     key( "file" )       << us.filename << endl;
@@ -328,6 +327,8 @@ UnzipSummary p_unzip( string    filename,
     res.watch.stop( "total" ); // End program runtime.
 
     size_t job = 0;
+    // Ensure that both files and bytes were initialized to zero.
+    FAIL_( res.files != 0 || res.bytes != 0 );
     for( auto const& o : outputs ) {
         // Aggregate stuff
         res.files += o.files;

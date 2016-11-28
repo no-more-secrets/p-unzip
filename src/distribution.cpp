@@ -221,13 +221,13 @@ index_lists distribution_folder_runtime( size_t             threads,
         void add( ZipStat const& zs ) {
             m_idxs.push_back( zs.index() );
             uint64_t const size_weight = 1;
-            uint64_t const file_weight = 5000000;
+            uint64_t const file_weight = 500000;
             m_metric += size_weight * zs.size()
                      +  file_weight * 1;
         }
         // These are indexes of files that are in this folder.
         vector<size_t> m_idxs;
-        size_t         m_metric;
+        uint64_t       m_metric;
     };
     // First we need to aggregate files that are in the same
     // folder.
@@ -248,7 +248,7 @@ index_lists distribution_folder_runtime( size_t             threads,
     // total runtime of each folder, so now just do an equitable
     // distribution of folders among the threads.
     vector<vector<size_t>> thread_idxs( threads );
-    vector<size_t>         metrics( threads );
+    vector<uint64_t>       metrics( threads );
 
     for( auto const& info : folder_infos ) {
         auto idx = min_element( metrics.begin(), metrics.end() )
