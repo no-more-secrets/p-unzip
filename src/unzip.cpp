@@ -110,7 +110,11 @@ void unzip_worker( size_t                thread_idx,
 * collected during the unzip process back to the caller.
 ****************************************************************/
 UnzipSummary::UnzipSummary( size_t jobs )
-    : files( 0 )
+    : filename()
+    , jobs_used( jobs )
+    , strategy_used()
+    , chunk_size_used( 0 )
+    , files( 0 )
     , files_ts( jobs )
     , bytes( 0 )
     , bytes_ts( jobs )
@@ -120,11 +124,77 @@ UnzipSummary::UnzipSummary( size_t jobs )
 
 // VS 2013 can't generate default move constructors
 UnzipSummary::UnzipSummary( UnzipSummary&& from )
-    : files( from.files )
+    : filename( move( from.filename ) )
+    , jobs_used( from.jobs_used )
+    , strategy_used( move( from.strategy_used ) )
+    , chunk_size_used( from.chunk_size_used )
+    , files( from.files )
+    , files_ts( move( from.files_ts ) )
     , bytes( from.bytes )
+    , bytes_ts( move( from.bytes_ts ) )
     , watch( move( from.watch ) )
     , watches( move( from.watches ) )
 {}
+
+// For convenience; will print out all the fields in a nice
+// human readable/pretty format.
+ostream& operator<<( ostream& out, UnzipSummary const& us ) {
+
+    #define BYTES( a ) left << setw(11) << a <<        \
+                       left << setw(11) <<             \
+                       (" (" + human_bytes( a ) + ")")
+
+    auto key = [&]( string const& s ) -> ostream& {
+        out << left << setw(17) << s << ": ";
+        return out;
+    };
+
+    auto to_string = []( size_t x ) -> string {
+        ostringstream ss;
+        ss << x;
+        return ss.str();
+    };
+
+    key( "file" )       << us.filename << endl;
+    key( "jobs" )       << us.jobs_used << endl;
+    key( "strategy" )   << us.strategy_used << endl;
+    key( "files" )      << us.files << endl;
+    key( "folders" )    << us.folders << endl;
+    key( "max size" )   << BYTES( us.max_size ) << endl;
+    key( "chunk" )      << us.chunk_size_used << endl;
+    key( "chunks_mem" ) << BYTES( us.chunk_size_used*us.jobs_used )
+                           << endl;
+
+    size_t jobs = us.watches.size();
+
+    out << endl;
+    for( size_t i = 0; i < jobs; ++i ) {
+        key( "files: thread " + to_string( i+1 ) ) <<
+            left << setw(22) << us.files_ts[i] << " [" <<
+            us.watches[i].human( "unzip" ) << "]" << endl;
+    }
+
+    key( "files: total") << us.files << endl;
+
+    out << endl;
+    for( size_t i = 0; i < jobs; ++i ) {
+        key( "bytes: thread " + to_string( i+1 ) ) <<
+            BYTES( us.bytes_ts[i] ) << " [" <<
+            us.watches[i].human( "unzip" ) << "]" << endl;
+    }
+
+    key( "bytes: total" ) << BYTES( us.bytes ) << endl;
+
+    out << endl;
+    // Output all the times that were measured but put "total"
+    // last.
+    for( auto&& result : us.watch.results() )
+        if( result.first != "total" )
+            key( "time: " + result.first ) << result.second <<
+            endl;
+    key( "time: total" ) << us.watch.human( "total" ) << endl;
+    return out;
+}
 
 /****************************************************************
 * Main interface for parallel unzip.
@@ -186,6 +256,7 @@ UnzipSummary p_unzip( string    filename,
     // must be non-zero.
     FAIL( res.max_size > 0 && chunk_size < 1,
         "Invalid chunk size" );
+    res.chunk_size_used = chunk_size;
 
     /************************************************************
     * Pre-create folder structure
@@ -219,6 +290,7 @@ UnzipSummary p_unzip( string    filename,
         thread_idxs = distribute[strategy]( jobs, files );
     });
     FAIL_( thread_idxs.size() != jobs );
+    res.strategy_used = strategy;
 
     /************************************************************
     * Start multithreaded unzip
@@ -272,7 +344,9 @@ UnzipSummary p_unzip( string    filename,
     // res.files.
     FAIL_( res.files != files.size() );
 
-    res.folders = folders.size();
+    res.folders   = folders.size();
+    res.filename  = filename;
+    res.jobs_used = jobs;
 
     size_t total_bytes_in_zip = 0;
     for( auto const& zs : files )

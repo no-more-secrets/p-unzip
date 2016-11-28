@@ -193,5 +193,7 @@ public:
         return value;
     }
 
-    operator bool() const { return has_value; }
+    // `explicit` to prevent accidental conversions which
+    // might allow code to compile that should not compile.
+    explicit operator bool() const { return has_value; }
 };

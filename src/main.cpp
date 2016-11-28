@@ -8,28 +8,13 @@
 * the threads in the specified way in order to take advantage of
 * the opportunity for parallelism while unzipping an archive.
 ****************************************************************/
-//#include "config.hpp"
-//#include "distribution.hpp"
-//#include "fs.hpp"
 #include "options.hpp"
-//#include "utils.hpp"
 #include "unzip.hpp"
-//#include "zip.hpp"
 
-//#include <algorithm>
-//#include <array>
-//#include <chrono>
 #include <cstdlib>
-//#include <iomanip>
-//#include <mutex>
-//#include <numeric>
-//#include <string>
 #include <thread>
 
 using namespace std;
-
-// Positional args should always be referred to by these.
-size_t const ARG_FILE_NAME = 0;
 
 /****************************************************************
 * Entrypoint into program from the arg parsing framework.  This
@@ -59,31 +44,33 @@ int main_( options::positional positional,
     * discrepancies associated with that (local timezone is
     * assumed when extracting).  If all the files are to have
     * the same timestamp then we can simply supply an integer
-    * value for the t argument. */
-    enum class TSPolicy {
-        current,    // Use time when file is decompressed
-        stored,     // Use time in zip file (no timezone)
-        stored_alt, // Use stored time but alter it
-        fixed
-    };
+    * value for the t argument.  If the value of the t argument
+    * starts with a plus or minus sign then it is interpreted as
+    * a timezone adjustment.  In that case, the decompressed
+    * files will be given the timestamp stored in the zip file
+    * but adjusted according to the time zone.  The time zone
+    * (offset) is interpreted as the time zone in which the zip
+    * was generated.  This can sometimes be necessary since zip
+    * files do not store timezone. */
+
     // By default we just use the "id" function that will use
     // the exact timestamp stored in the zip.  Note however that
     // this does not account for time zone.
     auto id_transform = []( time_t t ){ return t; };
-    TSXFormer ts_transform( id_transform );
+    TSXFormer ts_xform( id_transform );
     if( has_key( options, 't' ) ) {
         string t = options['t'].get();
         if( t == "current" )
             // Just let the timestamps fall where they may.
-            ts_transform = []( time_t ){ return 0; };
+            ts_xform = []( time_t ){ return 0; };
         else if( t == "stored" )
             // Use timestmaps stored inside zip file.
-            ts_transform = id_transform;
+            ts_xform = id_transform;
         else {
             // All extracted files should have this timestamp.
             time_t fixedStamp = atoi( t.c_str() );
             FAIL( fixedStamp == 0, "invalid integer for t arg" );
-            ts_transform = [=]( time_t ){ return fixedStamp; };
+            ts_xform = [=]( time_t ){ return fixedStamp; };
         }
     }
 
@@ -121,14 +108,8 @@ int main_( options::positional positional,
             // for us, is an invalid value.
             jobs = atoi( j.c_str() );
     }
-    // No matter how we got number of jobs, check it one last time.
+    // No matter how we got number of jobs, check it once more.
     FAIL( jobs < 1, "invalid number of jobs: " << jobs );
-
-    /************************************************************
-    * Get zip file name
-    ************************************************************/
-    // The zip file name will be one of the positional arguments.
-    string filename = positional[ARG_FILE_NAME];
 
     /************************************************************
     * Determine the chunk size
@@ -144,7 +125,7 @@ int main_( options::positional positional,
     * chunk size to save memory.  Also, this allows you to
     * control size of the blocks that are written to disk which
     * may have an effect on disk write throughput. */
-    size_t chunk_size = DEFAULT_CHUNK;
+    size_t chunk = DEFAULT_CHUNK;
     if( has_key( options, 'c' ) ) {
         string c = options['c'].get();
         if( c == "max" )
@@ -152,78 +133,46 @@ int main_( options::positional positional,
             // (the zero will be replaced with max file size
             // later when its value is known).  WARNING: this
             // can cause allocation failures.
-            chunk_size = 0;
+            chunk = 0;
         else
             // atoi should apparently return zero when the
             // conversion cannot be performed, which, luckily
             // for us, is an invalid value.
-            chunk_size = atoi( c.c_str() );
+            chunk = atoi( c.c_str() );
     }
     // At the very least, we need to check if this is zero which
     // it will be if it is invalid value on the command line.
     // However, it is not recommended to choose something as low
     // as one since that it likely an inefficient way to write to
     // disk.
-    FAIL( chunk_size < 1, "Invalid chunk size" );
+    FAIL( chunk < 1, "Invalid chunk size" );
 
     /************************************************************
     * Distribution of files to the threads
     *************************************************************
     * See if the user has specified a distribution strategy. */
-    string strategy = has_key( options, 'd' ) ? options['d'].get()
-                                              : DEFAULT_DIST;
+    string strategy = has_key( options, 'd' )
+                    ? options['d'].get()
+                    : DEFAULT_DIST;
+
+    /************************************************************
+    * Get zip file name
+    *************************************************************
+    * The zip file name will be one of the positional arguments.
+    * Note that the option parsing mechanism should already have
+    * validated that there is exactly one positional argument. */
+    string file = positional[0];
 
     /************************************************************
     * Unzip
     ************************************************************/
     UnzipSummary summary(
-        p_unzip( filename, quiet, jobs, strategy, chunk_size,
-                 ts_transform )
-    );
+        p_unzip( file, quiet, jobs, strategy, chunk, ts_xform ) );
 
     /************************************************************
     * Print out diagnostics
     ************************************************************/
-    #define BYTES( a ) left << setw(11) << a <<        \
-                       left << setw(11) <<             \
-                       (" (" + human_bytes( a ) + ")")
-
-    if( !chunk_size )
-        chunk_size = summary.max_size;
-
-    LOGP( "file",       filename       );
-    LOGP( "jobs",       jobs << " / " << num_threads );
-    LOGP( "files",      summary.files   );
-    LOGP( "folders",    summary.folders );
-    LOGP( "strategy",   strategy       );
-    LOGP( "chunk",      chunk_size     );
-    LOGP( "chunks_mem", BYTES( chunk_size*jobs ) );
-    LOGP( "max size",   BYTES( summary.max_size ) );
-
-    LOG( "" );
-    for( size_t i = 0; i < jobs; ++i ) {
-        LOGP( "files: thread " << i+1,
-            left << setw(22) << summary.files_ts[i] <<
-            " [" << summary.watches[i].human( "unzip" ) << "]" );
-    }
-
-    LOGP( "files: total", summary.files );
-
-    LOG( "" );
-    for( size_t i = 0; i < jobs; ++i ) {
-        LOGP( "bytes: thread " << i+1,
-            BYTES( summary.bytes_ts[i] ) <<
-            " [" << summary.watches[i].human( "unzip" ) << "]" );
-    }
-
-    LOGP( "bytes: total", BYTES( summary.bytes ) );
-
-    LOG( "" );
-    // Log all the times that we measured but put "total" last.
-    for( auto&& result : summary.watch.results() )
-        if( result.first != "total" )
-            LOGP( "time: " << result.first, result.second );
-    LOGP( "time: total", summary.watch.human( "total" ) );
+    cout << summary;
 
     return 0;
 }

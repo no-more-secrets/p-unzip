@@ -15,7 +15,7 @@
 // If chunk size is not specified then this will be the default.
 // Chunk size is the size of the chunk in which which data will
 // be written to disk as it is decompressed.
-#define DEFAULT_CHUNK 1024
+#define DEFAULT_CHUNK 4096
 
 // This enum represents the possible policies for dealing with
 // timestamps when extracting zip files.
@@ -37,6 +37,19 @@ struct UnzipSummary {
     UnzipSummary( UnzipSummary const& )            = delete;
     UnzipSummary& operator=( UnzipSummary const& ) = delete;
 
+    std::string            filename;
+    // These next two should just echo the values that are passed
+    // in unless one of the special values is given which might
+    // cause the unzip algorithm to select appropriate values
+    // itself; in that case, these will hold the values actually
+    // used.
+    size_t                 jobs_used;
+    std::string            strategy_used;
+    // Size in bytes of chunk_size actually used.  This would
+    // differ from the one passed into the function if zero
+    // is passed in which case chunk_size is the size of the
+    // largest file in the archive.
+    size_t                 chunk_size_used;
     // Total number of files in the zip archive
     size_t                 files;
     // Number of files extracted by each thread (ts = threads).
@@ -55,6 +68,11 @@ struct UnzipSummary {
     std::vector<StopWatch> watches;
 
 };
+
+// For convenience; will print out all the fields in a nice
+// human readable/pretty format.
+std::ostream& operator<<( std::ostream& out,
+                          UnzipSummary const& us );
 
 /****************************************************************
 * Main interface to invoke a parallel unzip.
@@ -80,7 +98,7 @@ struct UnzipSummary {
 *             allocation failures unless all the files are small
 *             and/or there are few threads.
 *
-*   ts_xform: This is a callable from time_t -> time_t.  Each
+*   ts_xform: this is a callable from time_t -> time_t.  Each
 *             time a file is decompressed and written to disk,
 *             this function will be called with argument equal
 *             to the timestamp of the archived file as it is
@@ -90,10 +108,15 @@ struct UnzipSummary {
 *             the time stamp if desired.  Most of the time the
 *             caller will want to pass the "identity" function,
 *             effectively causing the timestamps archived in the
-*             zip to be used (erasing time zone, as usual).
+*             zip to be used (erasing time zone, as usual).  If
+*             this function returns zero then no timestamp will
+*             be set on the file, effectively just defaulting to
+*             the file extraction time.
 *
-* This function will throw on any error, so if it returns, then
-* hopefully that means that everything went according to plan. */
+* This function will throw on any error. So if it returns, then
+* hopefully that means that everything went according to plan.
+* The object returned will contain diagnostic info collected
+* during the unzip process.  It can be ignored. */
 UnzipSummary p_unzip( std::string filename,
                       bool        quiet,
                       size_t      jobs,
