@@ -241,3 +241,12 @@ void set_timestamp( string const& path, time_t time ) {
     auto res = OS_SWITCH( utime, _utime )( path.c_str(), &times );
     FAIL( res == -1, "failed to set timestamp on " << path );
 }
+
+// Rename a file.  Will detect when arguments are equal and do
+// nothing.
+void rename_file( string const& path, string const& path_new ) {
+    if( path == path_new )
+        return;
+    auto func = OS_SWITCH( ::rename, MoveFile );
+    FAIL_( !func( path.c_str(), path_new.c_str() ) );
+}

@@ -34,6 +34,15 @@ inline bool ends_with( std::string const& s, char c ) {
     return s.size() > 0 && s[s.size()-1] == c;
 }
 
+// Does the string end with the string?
+// TODO make better implementation of this with std algorithm
+inline bool ends_with( std::string const& s, std::string const& s2 ) {
+    if( s.size() < s2.size() )
+        return false;
+    std::string end( s.end() - s2.size(), s.end() );
+    return (s2 == end);
+}
+
 template<typename T>
 std::string to_string( T const& x ) {
     ostringstream ss;

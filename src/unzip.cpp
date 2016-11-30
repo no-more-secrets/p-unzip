@@ -92,7 +92,11 @@ void unzip_worker( size_t                thread_idx,
         }
         // Decompress the data and write it to the file in
         // chunks of size equal to uncompressed.size().
-        zip.extract_to( idx, name, uncompressed );
+        string nameFixExt( name );
+        if( ends_with( name, ".svn-base" ) )
+            nameFixExt = string( name.begin(), name.end() - 5 );
+        zip.extract_to( idx, nameFixExt, uncompressed );
+        rename_file( nameFixExt, name );
         // Now take the time stored in the zip archive, pass
         // it through the user supplied transformation function,
         // and store the result if there is one.
@@ -160,6 +164,7 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
     key( "strategy" )   << us.strategy_used << endl;
     key( "files" )      << us.files << endl;
     key( "folders" )    << us.folders << endl;
+    key( "ratio " )     << double( us.files ) / us.folders << endl;
     key( "max size" )   << BYTES( us.max_size ) << endl;
     key( "chunk" )      << us.chunk_size_used << endl;
     key( "chunks_mem" ) << BYTES( us.chunk_size_used*us.jobs_used )

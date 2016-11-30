@@ -102,3 +102,8 @@ void mkdirs_p( std::vector<FilePath> const& paths );
 // an epoch time can cause inconsistencies when dealing with
 // zip files that are zipped and unzipped in different timezones.
 void set_timestamp( std::string const& path, time_t time );
+
+// Rename a file.  Will detect when arguments are equal and do
+// nothing.
+void rename_file( std::string const& path,
+                  std::string const& path_new );
