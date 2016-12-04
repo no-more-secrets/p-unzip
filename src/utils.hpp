@@ -45,10 +45,10 @@ inline bool ends_with( std::string const& s, std::string const& s2 ) {
 
 template<typename T>
 std::string to_string( T const& x ) {
-    ostringstream ss;
+    std::ostringstream ss;
     ss << x;
     return ss.str();
-};
+}
 
 // This functino will find the maximum over an iterable given a
 // key function.  The key function will be applied to each

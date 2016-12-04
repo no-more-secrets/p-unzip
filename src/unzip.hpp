@@ -125,4 +125,5 @@ UnzipSummary p_unzip( std::string filename,
                       TSXFormer   ts_xform );
 
 // This variant will call the above with sensible defaults.
-void p_unzip_basic( std::string filename, size_t jobs = 1 );
+UnzipSummary p_unzip_basic( std::string filename,
+                            size_t jobs = 1 );

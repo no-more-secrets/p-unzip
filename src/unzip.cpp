@@ -368,7 +368,7 @@ UnzipSummary p_unzip( string    filename,
 * This is an interface to the parallel unzip functionality with
 * commonly used defaults for most arguments.
 ****************************************************************/
-void p_unzip_basic( std::string filename, size_t jobs ) {
+UnzipSummary p_unzip_basic( std::string filename, size_t jobs ) {
     // Do not print file names are they are unzipped.
     bool quiet      = true;
     // Strategy for distibuting archived files to the threads.
@@ -381,5 +381,5 @@ void p_unzip_basic( std::string filename, size_t jobs ) {
     auto id = []( time_t t ){ return t; };
     // Run a full parallel unzip and ignore return value (which
     // is diagnostic info).
-    p_unzip( filename, quiet, jobs, strategy, chunk, id );
+    return p_unzip( filename, quiet, jobs, strategy, chunk, id );
 }

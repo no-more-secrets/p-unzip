@@ -172,7 +172,7 @@ int main_( options::positional positional,
     /************************************************************
     * Print out diagnostics
     ************************************************************/
-    cout << summary;
+    cerr << summary;
 
     return 0;
 }
