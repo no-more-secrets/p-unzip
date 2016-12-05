@@ -134,18 +134,22 @@ int main_( options::positional positional,
             // later when its value is known).  WARNING: this
             // can cause allocation failures.
             chunk = 0;
-        else
+        else {
             // atoi should apparently return zero when the
             // conversion cannot be performed, which, luckily
             // for us, is an invalid value.
             chunk = atoi( c.c_str() );
+            // Here we need to make sure this value isn't zero
+            // because zero is what atoi returns on failure.
+            // This means that a value of zero cannot be given
+            // on the commandline, which is fine, because it is
+            // used to represent "max" anyway (see above).  Also,
+            // note that, although a value of 1 is admissible,
+            // it is definitely not recommended (you should
+            // choose a power of 2 at least 512).
+            FAIL( chunk < 1, "Invalid chunk size" );
+        }
     }
-    // At the very least, we need to check if this is zero which
-    // it will be if it is invalid value on the command line.
-    // However, it is not recommended to choose something as low
-    // as one since that it likely an inefficient way to write to
-    // disk.
-    FAIL( chunk < 1, "Invalid chunk size" );
 
     /************************************************************
     * Distribution of files to the threads
