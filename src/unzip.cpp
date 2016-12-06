@@ -300,11 +300,14 @@ UnzipSummary p_unzip( string    filename,
 
         size_t long_exts = 0;
         for( auto const& f : files ) {
+            FilePath fp( f.name() );
+            if( starts_with( fp.basename(), '.' ) )
+                continue;
             // Must use FilePath variant of split_ext here because
             // the string variant could potential split on a dot
             // in a parent folder.  NOTE: first component (if
             // there is one) contains the dot at the end!
-            auto opt_p = split_ext( FilePath( f.name() ) );
+            auto opt_p = split_ext( fp );
             if( !opt_p )
                 // No extension in file name.
                 continue;
