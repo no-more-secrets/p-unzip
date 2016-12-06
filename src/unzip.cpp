@@ -46,13 +46,14 @@ struct thread_output {
 * represented by the vector of indices into the list of
 * archived files.
 ****************************************************************/
-void unzip_worker( size_t                thread_idx,
-                   Buffer::SP&           zip_buffer,
-                   vector<size_t> const& idxs,
-                   size_t                chunk_size,
-                   bool                  quiet,
-                   TSXFormer             ts_xform,
-                   thread_output&        data )
+void unzip_worker( size_t                    thread_idx,
+                   Buffer::SP&               zip_buffer,
+                   vector<size_t> const&     idxs,
+                   size_t                    chunk_size,
+                   bool                      quiet,
+                   TSXFormer                 ts_xform,
+                   map<string,string> const& tmp_names,
+                   thread_output&            data )
 {
     // This mutex protects logging of file names during unzip.
     // Without this lock the various threads' printing would conflict
@@ -90,13 +91,21 @@ void unzip_worker( size_t                thread_idx,
             LOG( left << setw( 4 ) <<
                  to_string( thread_idx ) + "> " << name );
         }
+        // Allow the caller to specify a temporary name for the
+        // file while it is being extracted.  If there is such a
+        // temp name specified then the temporary file will be
+        // renamed to the correct name after that file's extraction
+        // is complete.  This functionality is optional and is
+        // effectively turned off by leaving the map empty.  It
+        // could be used to support atomicity of extraction as
+        // well as the "small extension optimization."
+        auto tmp_name( map_get( tmp_names, name, name ) );
         // Decompress the data and write it to the file in
         // chunks of size equal to uncompressed.size().
-        string nameFixExt( name );
-        if( ends_with( name, ".svn-base" ) )
-            nameFixExt = string( name.begin(), name.end() - 5 );
-        zip.extract_to( idx, nameFixExt, uncompressed );
-        rename_file( nameFixExt, name );
+        zip.extract_to( idx, tmp_name, uncompressed );
+        // This function guarantees that it will do nothing if
+        // the two file names are equal.
+        rename_file( tmp_name, name );
         // Now take the time stored in the zip archive, pass
         // it through the user supplied transformation function,
         // and store the result if there is one.
@@ -114,7 +123,7 @@ void unzip_worker( size_t                thread_idx,
 }
 
 } // anon namespace
- 
+
 /****************************************************************
 * UnzipSummary: structure used for communicating diagnostic info
 * collected during the unzip process back to the caller.
@@ -205,11 +214,12 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
 * Main interface for parallel unzip.
 ****************************************************************/
 UnzipSummary p_unzip( string    filename,
-                      bool      quiet,
                       size_t    jobs,
+                      bool      quiet,
                       string    strategy,
                       size_t    chunk_size,
-                      TSXFormer ts_xform )
+                      TSXFormer ts_xform,
+                      bool      short_exts )
 {
     // This will collect info and will be returned at the end.
     UnzipSummary res( jobs );
@@ -264,6 +274,55 @@ UnzipSummary p_unzip( string    filename,
     res.chunk_size_used = chunk_size;
 
     /************************************************************
+    * Create the `temp name map`
+    *************************************************************
+    * The name map allows us to map the name of an archived entry
+    * to a new name.  When the file is created it will be created
+    * with the new name, then will be renamed to the original
+    * name after having been extracted. */
+    map<string, string> tmp_names;
+
+    // There could potentially be multiple uses for this map, but
+    // here we're using it accomplish something kind of odd. When
+    // an archived file has an extension longer than three chars
+    // we will, instead of extracting it directly as for most
+    // other files, we will extract it to a temporary file with
+    // an extention <= three chars.  For some mysterious reason,
+    // this can boost performance on Windows versus due to some
+    // strange dependence of the CreateFile performance on the
+    // number of characters in the extension.
+    if( short_exts ) {
+        res.watch.start( "short_exts" );
+        // Map used to hold mappings from long to short
+        // extensions so that we always use the same mapping
+        // for a given extension.
+        map<string, string> m;
+
+        size_t long_exts = 0;
+        for( auto const& f : files ) {
+            // Must use FilePath variant of split_ext here because
+            // the string variant could potential split on a dot
+            // in a parent folder.  NOTE: first component (if
+            // there is one) contains the dot at the end!
+            auto opt_p = split_ext( FilePath( f.name() ) );
+            if( !opt_p )
+                // No extension in file name.
+                continue;
+            auto const& ext = opt_p.get().second.str();
+            if( ext.size() <= 3 )
+                continue;
+            if( !has_key( m, ext ) ) {
+                FAIL( long_exts >= 1000,
+                    "number of unique long extensions > 1000" );
+                m[ext] = to_string( long_exts++ );
+            }
+            tmp_names[f.name()] =
+                opt_p.get().first.add_ext( m[ext] ).str();
+        }
+        res.watch.stop( "short_exts" );
+    }
+
+    /************************************************************
     * Pre-create folder structure
     *************************************************************
     * In a parallel unzip we must pre-create all of the folders
@@ -311,12 +370,14 @@ UnzipSummary p_unzip( string    filename,
     for( size_t i = 0; i < jobs; ++i )
         threads[i] = thread( unzip_worker,
                              i,
-                             std::ref( zip_buffer ),
-                             std::ref( thread_idxs[i] ),
+                             ref( zip_buffer ),
+                             ref( thread_idxs[i] ),
                              chunk_size,
                              quiet,
                              ts_xform,
-                             std::ref( outputs[i] ) );
+                             ref( tmp_names ),
+                             ref( outputs[i] ) );
+
     // Wait for everything to finish.
     for( auto& t : threads )
         t.join();
@@ -362,24 +423,4 @@ UnzipSummary p_unzip( string    filename,
     FAIL_( total_bytes_in_zip != res.bytes );
 
     return res;
-}
-
-/****************************************************************
-* This is an interface to the parallel unzip functionality with
-* commonly used defaults for most arguments.
-****************************************************************/
-UnzipSummary p_unzip_basic( std::string filename, size_t jobs ) {
-    // Do not print file names are they are unzipped.
-    bool quiet      = true;
-    // Strategy for distibuting archived files to the threads.
-    string strategy = DEFAULT_DIST;
-    // Files are decompressed/written in chunks of this size.
-    size_t chunk    = DEFAULT_CHUNK;
-    // Use the identity function for transforming timestamps.
-    // This means use the time archived in the zip directly,
-    // which ignores timezone.
-    auto id = []( time_t t ){ return t; };
-    // Run a full parallel unzip and ignore return value (which
-    // is diagnostic info).
-    return p_unzip( filename, quiet, jobs, strategy, chunk, id );
 }

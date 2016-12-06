@@ -166,6 +166,6 @@ bool ZipStat::is_folder() const {
 FilePath ZipStat::folder() const {
     FilePath res( name() );
     if( !is_folder() )
-        res = std::move( res.dirname() );
+        return res.dirname();
     return res;
 }

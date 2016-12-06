@@ -20,8 +20,21 @@ std::string human_bytes( size_t bytes );
 
 // Does the set contain the given key.
 template<typename ContainerT, typename KeyT>
-inline bool has_key( ContainerT const& s, KeyT const& k ) {
+bool has_key( ContainerT const& s, KeyT const& k ) {
     return s.find( k ) != s.end();
+}
+
+// Get value for key from map; if map does not contain the key
+// then simply return the default value specified WITHOUT
+// inserting it into the map.
+template<typename KeyT, typename ValT>
+ValT const& map_get( std::map<KeyT, ValT> const& m,
+                     KeyT const& k,
+                     ValT const& def ) {
+    auto found = m.find( k );
+    if( found == m.end() )
+        return def;
+    return found->second;
 }
 
 // Does the string start with the character?
@@ -34,15 +47,6 @@ inline bool ends_with( std::string const& s, char c ) {
     return s.size() > 0 && s[s.size()-1] == c;
 }
 
-// Does the string end with the string?
-// TODO make better implementation of this with std algorithm
-inline bool ends_with( std::string const& s, std::string const& s2 ) {
-    if( s.size() < s2.size() )
-        return false;
-    std::string end( s.end() - s2.size(), s.end() );
-    return (s2 == end);
-}
-
 template<typename T>
 std::string to_string( T const& x ) {
     std::ostringstream ss;
@@ -50,7 +54,13 @@ std::string to_string( T const& x ) {
     return ss.str();
 }
 
-// This functino will find the maximum over an iterable given a
+// "Identity" function (returns argument by value)
+template<typename T>
+auto id( T t ) -> T {
+    return t;
+}
+
+// This function will find the maximum over an iterable given a
 // key function.  The key function will be applied to each
 // element of the iterable to yield a key, then the keys will be
 // compared with the < operator to find the maximum.  The return

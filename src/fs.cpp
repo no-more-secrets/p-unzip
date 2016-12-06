@@ -146,6 +146,17 @@ FilePath::FilePath( string const& path ) {
             break;
         ++next;
     }
+    assert_invariants();
+}
+
+void FilePath::assert_invariants() const {
+    // We do not want to ever have a situation where the first
+    // component of a multi-component path is an empty string.
+    // This is dangerous because, such a path, when converted
+    // to a string, would begin with a path separator, which
+    // would mean absolute path.
+    FAIL_( m_components.size()     > 0 &&
+           m_components[0].size() == 0 )
 }
 
 // Assemble the components into a string where the components
@@ -153,7 +164,7 @@ FilePath::FilePath( string const& path ) {
 // the beginning or a slash at the end.
 string FilePath::str() const {
     string res;
-    if( m_components.empty() )
+    if( empty() )
         return res;
     for( auto const& c : m_components )
         res += c + "/";
@@ -168,17 +179,79 @@ string FilePath::str() const {
 // is not a dot ".").  If dirname is called on an empty path
 // then it will throw.
 FilePath FilePath::dirname() const {
-    FAIL( m_components.size() == 0,
-        "no more parent folders available in dirname" );
+    FAIL( empty(), "no more parent folders in dirname" );
     FilePath dir( *this );
     dir.m_components.pop_back();
+    dir.assert_invariants();
     return dir;
+}
+
+// Get basename if one exists; this means basically just the
+// last component of the path.
+string const& FilePath::basename() const {
+    FAIL( empty(), "cannot call basename on empty path" );
+    return m_components.back();
+}
+
+// Adds a dot followed by the given string to the last
+// component.  Creates one if there is no last component.
+FilePath FilePath::add_ext( string const& ext ) const {
+    FilePath res( *this );
+    if( res.empty() )
+        res.m_components.push_back( string() );
+    res.m_components.back() += ext;
+    res.assert_invariants();
+    return res;
+}
+
+// Similiar to the std::string variant of split_ext, but takes
+// FilePaths, and only considers dots in the last component of
+// the path.  In order to handle cases where the file name
+// begins with a dot, this function will include the dot in
+// the first component, which is different from split_ext for
+// strings.
+OptPairFilePath split_ext( FilePath const& fp ) {
+    if( fp.empty() )
+        return OptPairFilePath();
+    auto split( split_ext( fp.basename() ) );
+    if( !split )
+        return OptPairFilePath();
+    string first( split.get().first + "." );
+    return OptPairFilePath( make_pair(
+        fp.dirname()/FilePath( first ),
+        FilePath( split.get().second )
+    ) );
+}
+
+// Join two paths efficiently with moving
+FilePath operator/( FilePath const& left, FilePath const& right ) {
+    return left.join( right );
 }
 
 // For convenience.  Will just call str() and then output.
 std::ostream& operator<<( std::ostream& out,
                           FilePath const& path ) {
     return (out << path.str());
+}
+
+/****************************************************************
+* Utilities
+****************************************************************/
+
+// If the string contains at least one '.' then it will split the
+// string on the last dot and return the substrings that are to
+// the left and right of it.  The dot on which the string is
+// split is removed; this means that this dot will not appear in
+// either of the output strings, although the "left" component
+// may contain other dots.
+OptPairStr split_ext( string const& s ) {
+    auto pos = s.find_last_of( '.' );
+    if( pos == string::npos )
+        return OptPairStr();
+    return OptPairStr( make_pair(
+        s.substr( 0, pos ),
+        s.substr( pos+1 ) )
+    );
 }
 
 /****************************************************************
@@ -248,5 +321,7 @@ void rename_file( string const& path, string const& path_new ) {
     if( path == path_new )
         return;
     auto func = OS_SWITCH( ::rename, MoveFile );
-    FAIL_( !func( path.c_str(), path_new.c_str() ) );
+    auto res = func( path.c_str(), path_new.c_str() );
+    FAIL( OS_SWITCH( !!res, !res ),
+        "error renaming " << path << " to " << path_new );
 }

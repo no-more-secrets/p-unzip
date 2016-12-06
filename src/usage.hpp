@@ -34,10 +34,14 @@ static char const* info =
     "                 cyclic|sliced|folder|bytes"            "\n"
     "                 Default is cyclic."                    "\n"
     ""                                                       "\n"
-    "   -c size     : specify chunk size."                   "\n";
+    "   -c size     : specify chunk size."                   "\n"
+    ""                                                       "\n"
+    "   -a          : avoid creating files with long"        "\n"
+    "                 extensions.  Instead, create them"     "\n"
+    "                 with short extensions then rename."    "\n";
 
 // Options that do not take a value
-static auto options_no_val   = { 'h', 'q' };
+static auto options_no_val   = { 'h', 'q', 'a' };
 // Options that must take a value
 static auto options_val      = { 'j', 'd', 'c', 't' };
 

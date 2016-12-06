@@ -28,7 +28,8 @@ int main_( options::positional positional,
     /************************************************************
     * Get miscellaneous options
     ************************************************************/
-    bool quiet = has_key( options, 'q' );
+    bool quiet      = has_key( options, 'q' );
+    bool short_exts = has_key( options, 'a' );
 
     /************************************************************
     * Determine timestamp (TS) policy
@@ -166,8 +167,13 @@ int main_( options::positional positional,
     /************************************************************
     * Unzip
     ************************************************************/
-    UnzipSummary summary(
-        p_unzip( file, quiet, jobs, strategy, chunk, ts_xform ) );
+    UnzipSummary summary( p_unzip( file,
+                                   jobs,
+                                   quiet,
+                                   strategy,
+                                   chunk,
+                                   ts_xform,
+                                   short_exts ) );
 
     /************************************************************
     * Print out diagnostics

@@ -113,17 +113,20 @@ std::ostream& operator<<( std::ostream& out,
 *             be set on the file, effectively just defaulting to
 *             the file extraction time.
 *
+* short_exts: Turn on a behavior (intended to be an optimization)
+*             where all filenames with extensions longer than
+*             three characters will be temporarily written to
+*             files with short extensions while being extracted,
+*             then will later be renamed to their original name.
+*
 * This function will throw on any error. So if it returns, then
 * hopefully that means that everything went according to plan.
 * The object returned will contain diagnostic info collected
 * during the unzip process.  It can be ignored. */
 UnzipSummary p_unzip( std::string filename,
-                      bool        quiet,
-                      size_t      jobs,
-                      std::string strategy,
-                      size_t      chunk_size,
-                      TSXFormer   ts_xform );
-
-// This variant will call the above with sensible defaults.
-UnzipSummary p_unzip_basic( std::string filename,
-                            size_t jobs = 1 );
+                      size_t      jobs       = 1,
+                      bool        quiet      = true,
+                      std::string strategy   = DEFAULT_DIST,
+                      size_t      chunk_size = DEFAULT_CHUNK,
+                      TSXFormer   ts_xform   = id<time_t>,
+                      bool        short_exts = false );

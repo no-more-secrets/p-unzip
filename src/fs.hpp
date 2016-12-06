@@ -36,10 +36,14 @@ public:
 *****************************************************************
 * This class is an immutable representation of a file path.
 * It only holds relative paths, as opposed to absolute paths
-* that are rooted at / (Posix) or a drive letter (Windows). */
+* that are rooted at / (Posix) or a drive letter (Windows). Note
+* that these are not constrained to represent real paths, and
+* their components may even be empty. */
 class FilePath {
 
 public:
+    FilePath() {}
+
     FilePath( std::string const& path );
 
     FilePath( FilePath const& from )
@@ -47,11 +51,6 @@ public:
 
     FilePath( FilePath&& from )
         : m_components( std::move( from.m_components ) ) {}
-
-    FilePath& operator=( FilePath&& from ) {
-        m_components = std::move( from.m_components );
-        return *this;
-    }
 
     // Assemble the components into a string where the components
     // are separated by slashes.
@@ -63,18 +62,65 @@ public:
     // Remove leading component, throw if there are no more.
     FilePath dirname() const;
 
+    // Get basename if one exists; this means basically just the
+    // last component of the path.
+    std::string const& basename() const;
+
+    // Adds the given string to the last component.  Creates
+    // one if there is no last component.  Note: this does not
+    // add a dot automatically.
+    FilePath add_ext( std::string const& ext ) const;
+
+    // Mutating join with another FilePath
+    FilePath join( FilePath const& fp ) const {
+        FilePath res( *this );
+        for( auto const& p : fp.m_components )
+            res.m_components.push_back( p );
+        assert_invariants();
+        return res;
+    }
+
     // Lexicographical comparison.
     bool operator<( FilePath const& right ) const {
         return m_components < right.m_components;
     }
 
 private:
+    // Check if everything is kosher and throw if not.
+    void assert_invariants() const;
+
     std::vector<std::string> m_components;
 
 };
 
+// For convenience
+using OptPairFilePath = Optional<std::pair<FilePath,FilePath>>;
+
+// Similiar to the std::string variant of split_ext, but takes
+// FilePaths, and only considers dots in the last component of
+// the path.
+OptPairFilePath split_ext( FilePath const& fp );
+
+// Join two paths efficiently with moving
+FilePath operator/( FilePath const& left, FilePath const& right );
+
 // For convenience.  Will just call str() and then output.
 std::ostream& operator<<( std::ostream& out, FilePath const& path );
+
+/****************************************************************
+* Utilities
+****************************************************************/
+
+// For convenience
+using OptPairStr = Optional<std::pair<std::string,std::string>>;
+
+// If the string contains at least one '.' then it will split the
+// string on the last dot and return the substrings that are to
+// the left and right of it.  The dot on which the string is
+// split is removed; this means that this dot will not appear in
+// either of the output strings, although the "left" component
+// may contain other dots.
+OptPairStr split_ext( std::string const& s );
 
 /****************************************************************
 * High-level file system functions
