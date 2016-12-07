@@ -316,12 +316,21 @@ void set_timestamp( string const& path, time_t time ) {
 }
 
 // Rename a file.  Will detect when arguments are equal and do
-// nothing.
+// nothing.  Will replace the destination file if it exists.
 void rename_file( string const& path, string const& path_new ) {
     if( path == path_new )
         return;
-    auto func = OS_SWITCH( ::rename, MoveFile );
-    auto res = func( path.c_str(), path_new.c_str() );
-    FAIL( OS_SWITCH( !!res, !res ),
+    // Setup a function that takes two file names, does the move
+    // (with replacement of existing files) and then returns
+    // something "true" on error.
+    auto func = OS_SWITCH(
+        /* Linux */
+        ::rename,
+        /* Windows */
+        []( char const* x, char const* y ) -> bool
+            { return !MoveFileEx( x, y, MOVEFILE_REPLACE_EXISTING ); }
+    );
+    // Now do the rename and check return code.
+    FAIL( func( path.c_str(), path_new.c_str() ),
         "error renaming " << path << " to " << path_new );
 }
