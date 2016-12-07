@@ -62,6 +62,8 @@ struct UnzipSummary {
     size_t                 folders;
     // Uncompressed size of largest file in archive.
     size_t                 max_size;
+    // Number of files for which temp names were assigned
+    size_t                 num_temp_names;
     // This holds timing info for the top-level process.
     StopWatch              watch;
     // These hold timeing info for the individual threads.

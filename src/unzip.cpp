@@ -137,22 +137,28 @@ UnzipSummary::UnzipSummary( size_t jobs )
     , files_ts( jobs )
     , bytes( 0 )
     , bytes_ts( jobs )
+    , folders( 0 )
+    , max_size( 0 )
+    , num_temp_names( 0 )
     , watch()
     , watches( jobs )
 {}
 
 // VS 2013 can't generate default move constructors
 UnzipSummary::UnzipSummary( UnzipSummary&& from )
-    : filename( move( from.filename ) )
-    , jobs_used( from.jobs_used )
-    , strategy_used( move( from.strategy_used ) )
-    , chunk_size_used( from.chunk_size_used )
-    , files( from.files )
-    , files_ts( move( from.files_ts ) )
-    , bytes( from.bytes )
-    , bytes_ts( move( from.bytes_ts ) )
-    , watch( move( from.watch ) )
-    , watches( move( from.watches ) )
+    : filename       ( move( from.filename        ) )
+    , jobs_used      ( move( from.jobs_used       ) )
+    , strategy_used  ( move( from.strategy_used   ) )
+    , chunk_size_used( move( from.chunk_size_used ) )
+    , files          ( move( from.files           ) )
+    , files_ts       ( move( from.files_ts        ) )
+    , bytes          ( move( from.bytes           ) )
+    , bytes_ts       ( move( from.bytes_ts        ) )
+    , folders        ( move( from.folders         ) )
+    , max_size       ( move( from.max_size        ) )
+    , num_temp_names ( move( from.num_temp_names  ) )
+    , watch          ( move( from.watch           ) )
+    , watches        ( move( from.watches         ) )
 {}
 
 // For convenience; will print out all the fields in a nice
@@ -173,11 +179,13 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
     key( "strategy" )   << us.strategy_used << endl;
     key( "files" )      << us.files << endl;
     key( "folders" )    << us.folders << endl;
-    key( "ratio " )     << double( us.files ) / us.folders << endl;
+    if( us.folders > 0 )
+        key( "ratio " ) << double( us.files ) / us.folders << endl;
     key( "max size" )   << BYTES( us.max_size ) << endl;
+    key( "tmp names" )  << us.num_temp_names << endl;
     key( "chunk" )      << us.chunk_size_used << endl;
     key( "chunks_mem" ) << BYTES( us.chunk_size_used*us.jobs_used )
-                           << endl;
+                        << endl;
 
     size_t jobs = us.watches.size();
 
@@ -324,6 +332,7 @@ UnzipSummary p_unzip( string    filename,
         }
         res.watch.stop( "short_exts" );
     }
+    res.num_temp_names = tmp_names.size();
 
     /************************************************************
     * Pre-create folder structure
