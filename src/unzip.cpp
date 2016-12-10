@@ -20,7 +20,8 @@ namespace {
 struct thread_output {
 
     thread_output()
-        : watch(), files( 0 ), bytes( 0 ), ret( false ) {}
+        : watch(), files( 0 ), bytes( 0 ), tmp_files( 0 )
+        , ret( false ) {}
 
     // The thread will record timing info here so that we can
     // e.g. understand the runtime actually spent in each thread.
@@ -31,11 +32,18 @@ struct thread_output {
     // Total number of bytes written by this thread.  This is
     // for diagnostics and sanity checking.
     size_t               bytes;
+    // Total number of files that were written to temporary
+    // files during extraction;
+    size_t               tmp_files;
     // The return value of the thread (success/failure) is here.
     // This is used because we don't allow exceptions to leave
     // the threads.
     bool                 ret;
 };
+
+// Function signature to use to map an archived file name onto
+// a temporary file name used when extracting the data.
+using NameMap = function<string( string const& )>;
 
 /****************************************************************
 * This is the function that will be given to each of the thread
@@ -46,18 +54,18 @@ struct thread_output {
 * represented by the vector of indices into the list of
 * archived files.
 ****************************************************************/
-void unzip_worker( size_t                    thread_idx,
-                   Buffer::SP&               zip_buffer,
-                   vector<size_t> const&     idxs,
-                   size_t                    chunk_size,
-                   bool                      quiet,
-                   TSXFormer                 ts_xform,
-                   map<string,string> const& tmp_names,
-                   thread_output&            data )
+void unzip_worker( size_t                thread_idx,
+                   Buffer::SP&           zip_buffer,
+                   vector<size_t> const& idxs,
+                   size_t                chunk_size,
+                   bool                  quiet,
+                   TSXFormer             ts_xform,
+                   NameMap const&        get_tmp_name,
+                   thread_output&        data )
 {
     // This mutex protects logging of file names during unzip.
-    // Without this lock the various threads' printing would conflict
-    // and lead to messy output.
+    // Without this lock the various threads' printing would
+    // conflict and lead to messy output.
     static mutex log_name_mtx;
 
     data.ret = false; // assume we fail unless we succeed.
@@ -99,7 +107,9 @@ void unzip_worker( size_t                    thread_idx,
         // effectively turned off by leaving the map empty.  It
         // could be used to support atomicity of extraction as
         // well as the "small extension optimization."
-        auto tmp_name( map_get( tmp_names, name, name ) );
+        auto tmp_name( get_tmp_name( name ) );
+        // Keep track of how many we're actually renaming.
+        data.tmp_files += ( tmp_name == name ) ? 0 : 1;
         // Decompress the data and write it to the file in
         // chunks of size equal to uncompressed.size().
         zip.extract_to( idx, tmp_name, uncompressed );
@@ -218,6 +228,27 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
     return out;
 }
 
+// Helper function.  This will take a string as input, then
+// compute a primitive hash of it, then use that hash to select
+// a pseudo-random three-character string (suitable for a file
+// extension) and return it.  There are only about 36 possible
+// results, so this is far from a perfect hash, but it meets
+// the two requirements which are that it be thread safe and
+// fast.
+string ext3( string s ) {
+    // List of all chars that we will use when generating file
+    // extensions.  We don't include uppercase letters because on
+    // Windows/OSX file names are case-insensitive.
+    static string const ext_chars( "abcdefghijklmnopqrstuvwxyz"
+                                   "0123456789" );
+    size_t const n = 3; // Return string of this length
+    // Do a primitive hash of the extension.
+    char hash( 0 ); for( auto c : s ) hash += c^hash;
+    // Use the resulting hash (which is a number) as an offset
+    // the character array to select a substring of length three.
+    return ext_chars.substr( hash % (ext_chars.size()-n), n );
+}
+
 /****************************************************************
 * Main interface for parallel unzip.
 ****************************************************************/
@@ -282,57 +313,59 @@ UnzipSummary p_unzip( string    filename,
     res.chunk_size_used = chunk_size;
 
     /************************************************************
-    * Create the `temp name map`
+    * Create the `temp name map` function
     *************************************************************
-    * The name map allows us to map the name of an archived entry
-    * to a new name.  When the file is created it will be created
-    * with the new name, then will be renamed to the original
-    * name after having been extracted. */
-    map<string, string> tmp_names;
+    * Establish a function that takes a archived file name and
+    * maps it to another name.  This new name is used as the
+    * temporary location to use when extracting/writing the file.
+    * After extraction is complete it will be renamed to the
+    * proper name. */
 
-    // There could potentially be multiple uses for this map, but
-    // here we're using it accomplish something kind of odd. When
-    // an archived file has an extension longer than three chars
-    // we will, instead of extracting it directly as for most
-    // other files, we will extract it to a temporary file with
-    // an extention <= three chars.  For some mysterious reason,
-    // this can boost performance on Windows versus due to some
-    // strange dependence of the CreateFile performance on the
-    // number of characters in the extension.
+    // The default mapping does nothing.
+    NameMap get_tmp_name = id<string>;
+
+    // There could potentially be multiple uses for this mapping
+    // function, but here we're using it accomplish something
+    // kind of odd.
+    //
+    // We're going to map files to temp names, but only ones
+    // whose names meet certain criteria.  Various empirical
+    // observations were made on Windows machines running
+    // Symantec Anti-Virus software.  It appears that this AV
+    // software has a negative affect on file creation time in
+    // general, but particularly so for files whose names
+    // contain extensions longer than three characters.
+    //
+    // So, when an archived file has an extension longer than
+    // three chars we will, instead of extracting it directly
+    // as for most other files, we will extract it to a temporary
+    // file with an extention == three chars.  Then, after we
+    // are finished extracting, we will rename it to the original
+    // name.  For some mysterious reason, this can significantly
+    // boost performance on the Windows desktop machines on which
+    // measurements were taken (at the time of this writing).
+    //
+    // And it gets even stranger... if the filename begins
+    // with a dot we will keep it as is... this comes from
+    // empirical observations that suggest that mapping files
+    // that start with a dot (even when they have an extension
+    // > 3 chars) actually slows it down again.
     if( short_exts ) {
-        res.watch.start( "short_exts" );
-        // Map used to hold mappings from long to short
-        // extensions so that we always use the same mapping
-        // for a given extension.
-        map<string, string> m;
-
-        size_t long_exts = 0;
-        for( auto const& f : files ) {
-            FilePath fp( f.name() );
-            if( starts_with( fp.basename(), '.' ) )
-                continue;
+        // This function must be thread safe!
+        get_tmp_name = []( string const& input ) {
             // Must use FilePath variant of split_ext here because
             // the string variant could potential split on a dot
             // in a parent folder.  NOTE: first component (if
             // there is one) contains the dot at the end!
-            auto opt_p = split_ext( fp );
-            if( !opt_p )
-                // No extension in file name.
-                continue;
-            auto const& ext = opt_p.get().second.str();
-            if( ext.size() <= 3 )
-                continue;
-            if( !has_key( m, ext ) ) {
-                FAIL( long_exts >= 1000,
-                    "number of unique long extensions > 1000" );
-                m[ext] = to_string( long_exts++ );
-            }
-            tmp_names[f.name()] =
-                opt_p.get().first.add_ext( m[ext] ).str();
-        }
-        res.watch.stop( "short_exts" );
+            auto opt_p = split_ext( FilePath( input ) );
+            if( !opt_p ) return input;
+            auto const& fst = opt_p.get().first;
+            string snd( opt_p.get().second.str() );
+            return ( fst.basename() != "." && snd.size() > 3 )
+                   ? fst.add_ext( ext3( snd ) ).str()
+                   : input;
+        };
     }
-    res.num_temp_names = tmp_names.size();
 
     /************************************************************
     * Pre-create folder structure
@@ -387,7 +420,7 @@ UnzipSummary p_unzip( string    filename,
                              chunk_size,
                              quiet,
                              ts_xform,
-                             ref( tmp_names ),
+                             ref( get_tmp_name ),
                              ref( outputs[i] ) );
 
     // Wait for everything to finish.
@@ -409,12 +442,13 @@ UnzipSummary p_unzip( string    filename,
     FAIL_( res.files != 0 || res.bytes != 0 );
     for( auto const& o : outputs ) {
         // Aggregate stuff
-        res.files += o.files;
-        res.bytes += o.bytes;
+        res.files          += o.files;
+        res.bytes          += o.bytes;
+        res.num_temp_names += o.tmp_files;
         // Per-thread stuff
-        res.files_ts[job] = o.files;
-        res.bytes_ts[job] = o.bytes;
-        res.watches[job]  = move( o.watch );
+        res.files_ts[job]   = o.files;
+        res.bytes_ts[job]   = o.bytes;
+        res.watches[job]    = move( o.watch );
         ++job;
     }
 
