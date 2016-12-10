@@ -160,70 +160,37 @@ STRATEGY( bytes ) // Register this strategy
 
 //________________________________________________________________
 
-// The "runtime" strategy will try to estimate (up to a
-// proportionality constant) the runtime of a thread by weighting
-// the cost of file creation against the cost of writing the file
-// contents.  More precisely, it will calculate a weighted sum
-// of a threads file count and total bytes and hope that this is
-// proportional to its runtime.  Using this metric, it will try to
-// balance runtime among each of the threads.  The proportionality
-// constants need to be calibrated and will be platform-dependent.
-index_lists distribution_runtime(  size_t             threads,
-                                   files_range const& files ) {
-    uint64_t const size_weight = 1;
-    uint64_t const file_weight = 5000000;
-    // First we copy the zip stats and sort in descending
-    // order by size.  This is because, if we distribute the
-    // large files first, it is more likely in the end that
-    // we will be able to balance them out using the small ones.
-    vector<ZipStat> stats( files.begin(), files.end() );
-    auto by_size = []( ZipStat const& l, ZipStat const& r ) {
-        return l.size() > r.size();
-    };
-    sort( stats.begin(), stats.end(), by_size );
-    vector<vector<size_t>> thread_idxs( threads );
-    // These will hold the running sums of total estimated
-    // runtime that each thread will take.  We want ideally
-    // (in this strategy at least) to balance them.
-    vector<uint64_t> totals( threads, 0 );
-    for( auto const& zs : stats ) {
-        auto where = min_element( totals.begin(), totals.end() )
-                   - totals.begin();
-        FAIL_( where < 0 || size_t( where ) >= threads );
-        thread_idxs[where].push_back( zs.index() );
-        totals[where] += size_weight * zs.size()
-                      +  file_weight * 1;
-    }
-    return thread_idxs;
-}
-STRATEGY( runtime ) // Register this strategy
-
-//________________________________________________________________
-
-// The "folder_runtime" strategy will compile a list of all
-// folders along with the number of files they contain.  It will
-// then sort the list of folders by their runtime.  It will then
-// iterate through the list of folders and assign each to a thread
-// in a manner such as to keep runtime of the threads as uniform
-// as possible.  The idea behind this strategy is to never assign
-// files from the same folder to more than one thread, but while
-// trying to give each thread roughly the same runtime.  It is
-// like the runtime strategy except that it distributes entire
-// folders instead of individual files.
-index_lists distribution_folder_runtime( size_t             threads,
-                                         files_range const& files ) {
-    // This structure will hold information about a single folder:
-    // this includes the metric (runtime in this case) and list of
-    // indexes of files inside this folder.
+// This function, which is a template for a strategy, will
+// compile a list of all folders along with metrics computed on
+// each folder, which are calculated using the metric function
+// supplied as an argument.  It will then sort the list of
+// folders by the magnitude of the their associated metrics.
+// It will then iterate through the list of folders and assign
+// each to a thread in a manner such as to try to keep total
+// metric of the threads as uniform as possible.  The idea
+// behind this strategy is to never assign files from the same
+// folder to more than one thread, but while trying to give
+// each thread roughly the same metric.
+//
+// In practice, the idea is that the metric (which is a number)
+// should be proportional to the runtime necessary to extract
+// the given zip entry.  This could be computed in various ways.
+// The signature of MatricFunc is: size_t( ZipStat const& ).
+template<typename MetricFunc>
+index_lists by_folder( size_t             threads,
+                       files_range const& files,
+                       MetricFunc         metric ) {
+    // This structure will hold information about a single
+    // folder: this includes the metric and list of indexes
+    // of files inside this folder.  Note, it is important
+    // that the metric be proportional to runtime to the
+    // greatest extent possible.
     struct Data {
         Data() : m_metric( 0 ) {}
         // Add a new file and update the metric.
-        void add( ZipStat const& zs ) {
+        void add( ZipStat const& zs, size_t delta ) {
             m_idxs.push_back( zs.index() );
-            uint64_t const size_weight = 1;
-            uint64_t const file_weight = 500000;
-            m_metric += size_weight * zs.size()
-                     +  file_weight * 1;
+            m_metric += delta;
         }
         // These are indexes of files that are in this folder.
         vector<size_t> m_idxs;
@@ -233,19 +200,19 @@ index_lists distribution_folder_runtime( size_t             threads,
     // folder.
     map<FilePath, Data> folder_map;
     for( auto const& zs : files )
-        folder_map[zs.folder()].add( zs );
+        folder_map[zs.folder()].add( zs, metric( zs ) );
     // Now copy all the Data objects into a vector for sorting.
     vector<Data> folder_infos;
     for( auto p : folder_map )
         folder_infos.push_back( p.second );
     // Sort that in descending order (it is important that they
-    // are descending and not ascending) by the runtime.
+    // are descending and not ascending) by the metric.
     auto by_metric = []( Data const& l, Data const& r ) {
         return l.m_metric > r.m_metric;
     };
     sort( folder_infos.begin(), folder_infos.end(), by_metric );
     // At this point we have a list of folders along with the
-    // total runtime of each folder, so now just do an equitable
+    // total metric of each folder, so now just do an equitable
     // distribution of folders among the threads.
     vector<vector<size_t>> thread_idxs( threads );
     vector<uint64_t>       metrics( threads );
@@ -259,9 +226,36 @@ index_lists distribution_folder_runtime( size_t             threads,
         ti.insert( ti.end(), info.m_idxs.begin(), info.m_idxs.end() );
         metrics[idx] += info.m_metric;
     }
-    // At this point the files in a given folder should not be
-    // shared among multiple threads and the estimated runtime
-    // of each thread should be about the same.
+    // At this point the files in a given folder should be
+    // assigned exclusively to a single thread and the
+    // metric for each thread should be about the same.
     return thread_idxs;
 }
-STRATEGY( folder_runtime ) // Register this strategy
+
+//________________________________________________________________
+
+// This is a "by_folder" strategy whose metric for a given zip
+// entry is 1.  This means that we assume runtime is proportional
+// to file creation time, since we are weighting all zip entries
+// equally.
+index_lists distribution_folder_files( size_t             threads,
+                                       files_range const& files ) {
+    return by_folder( threads, files, []( ZipStat const& ) {
+        return 1;
+    } );
+}
+STRATEGY( folder_files ) // Register this strategy
+
+//________________________________________________________________
+
+// This is a "by_folder" strategy whose metric for a given zip
+// entry is the number of uncompressed bytes it will contain.
+// This means that we assume runtime is proportional to the
+// time needed to write the uncompressed file contents to disk.
+index_lists distribution_folder_bytes( size_t             threads,
+                                       files_range const& files ) {
+    return by_folder( threads, files, []( ZipStat const& zs ) {
+        return zs.size();
+    } );
+}
+STRATEGY( folder_bytes ) // Register this strategy
