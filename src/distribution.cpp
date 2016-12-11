@@ -1,6 +1,8 @@
 /****************************************************************
-* Interfaces for taking a list of zip entries and distributing
-* the files among a number of threads.
+* Functions for taking a list of zip entries and distributing
+* the files among a number of threads.  Each function, called a
+* "strategy", is reflected at load time and is available though
+* a global dictionary by name.
 ****************************************************************/
 #include "macros.hpp"
 #include "distribution.hpp"

@@ -74,15 +74,18 @@ int64_t StopWatch::minutes( string const& name ) const {
 string StopWatch::human( string const& name ) const {
     FAIL_( !event_complete( name ) );
     ostringstream out;
+    // Each of these represent the same time, just in
+    // different units.
     auto m  = minutes( name );
     auto s  = seconds( name );
     auto ms = milliseconds( name );
     if( m > 0 )
         out << m << "m" << s % 60 << "s";
     else if( s > 0 ) {
-        out << s << "s";
+        out << s;
         if( s < 10 )
-            out << ms % 1000 << "ms";
+            out << "." << ms % 1000;
+        out << "s";
     }
     else
         out << ms << "ms";

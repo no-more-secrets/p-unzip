@@ -16,13 +16,13 @@ namespace {
 
 // This is the structure that is used to return various pieces
 // of data to the caller from a single thread.  Among this data
-// is the return value.
+// is the return value indicating success/failure.
 struct thread_output {
-
+    // Note that `ret` defaults to false, which means that it
+    // assumes failure unless explicitely changed to true.
     thread_output()
         : watch(), files( 0 ), bytes( 0 ), tmp_files( 0 )
         , ret( false ) {}
-
     // The thread will record timing info here so that we can
     // e.g. understand the runtime actually spent in each thread.
     StopWatch            watch;
@@ -68,7 +68,6 @@ void unzip_worker( size_t                thread_idx,
     // conflict and lead to messy output.
     static mutex log_name_mtx;
 
-    data.ret = false; // assume we fail unless we succeed.
     TRY
     // Start the clock.  Each thread reports its total runtime.
     data.watch.start( "unzip" );
@@ -96,17 +95,17 @@ void unzip_worker( size_t                thread_idx,
         // causing jumbled output.
         if( !quiet ) {
             lock_guard<mutex> lock( log_name_mtx );
-            LOG( left << setw( 4 ) <<
-                 to_string( thread_idx ) + "> " << name );
+            cerr << left << setw( 4 ) <<
+                to_string( thread_idx ) + "> " << name << endl;
         }
-        // Allow the caller to specify a temporary name for the
-        // file while it is being extracted.  If there is such a
-        // temp name specified then the temporary file will be
-        // renamed to the correct name after that file's extraction
-        // is complete.  This functionality is optional and is
-        // effectively turned off by leaving the map empty.  It
-        // could be used to support atomicity of extraction as
-        // well as the "small extension optimization."
+        // Allow the caller to specify a temporary name for
+        // the file while it is being extracted.  If the
+        // callback function returns a name different from
+        // the input name then the file will be written to
+        // the temporary name while being extracted, then
+        // will be renamed afterward.  It could be used to
+        // support atomicity of extraction as well as the
+        // "small extension optimization."
         auto tmp_name( get_tmp_name( name ) );
         // Keep track of how many we're actually renaming.
         data.tmp_files += ( tmp_name == name ) ? 0 : 1;
@@ -148,27 +147,9 @@ UnzipSummary::UnzipSummary( size_t jobs )
     , bytes( 0 )
     , bytes_ts( jobs )
     , folders( 0 )
-    , max_size( 0 )
     , num_temp_names( 0 )
     , watch()
     , watches( jobs )
-{}
-
-// VS 2013 can't generate default move constructors
-UnzipSummary::UnzipSummary( UnzipSummary&& from )
-    : filename       ( move( from.filename        ) )
-    , jobs_used      ( move( from.jobs_used       ) )
-    , strategy_used  ( move( from.strategy_used   ) )
-    , chunk_size_used( move( from.chunk_size_used ) )
-    , files          ( move( from.files           ) )
-    , files_ts       ( move( from.files_ts        ) )
-    , bytes          ( move( from.bytes           ) )
-    , bytes_ts       ( move( from.bytes_ts        ) )
-    , folders        ( move( from.folders         ) )
-    , max_size       ( move( from.max_size        ) )
-    , num_temp_names ( move( from.num_temp_names  ) )
-    , watch          ( move( from.watch           ) )
-    , watches        ( move( from.watches         ) )
 {}
 
 // For convenience; will print out all the fields in a nice
@@ -191,7 +172,6 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
     key( "folders" )    << us.folders << endl;
     if( us.folders > 0 )
         key( "ratio " ) << double( us.files ) / us.folders << endl;
-    key( "max size" )   << BYTES( us.max_size ) << endl;
     key( "tmp names" )  << us.num_temp_names << endl;
     key( "chunk" )      << us.chunk_size_used << endl;
     key( "chunks_mem" ) << BYTES( us.chunk_size_used*us.jobs_used )
@@ -228,13 +208,15 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
     return out;
 }
 
-// Helper function.  This will take a string as input, then
-// compute a primitive hash of it, then use that hash to select
-// a pseudo-random three-character string (suitable for a file
-// extension) and return it.  There are only about 36 possible
-// results, so this is far from a perfect hash, but it meets
-// the two requirements which are that it be thread safe and
-// fast.
+// The idea of this function is to take an arbitrary input
+// string and then hash it, where the hash is a three-character
+// string suitable for a file extension.  For simplicity we
+// use a primitive implementation which computes a simple hash
+// of the string, then uses the resulting number to select a
+// three-character substring from a fixed string defined in
+// the body of the function.  There are only about 36 possible
+// results, so this is far from a perfect hash, but it meets the
+// two requirements which are that it be thread safe and fast.
 string ext3( string s ) {
     // List of all chars that we will use when generating file
     // extensions.  We don't include uppercase letters because on
@@ -283,11 +265,6 @@ UnzipSummary p_unzip( string    filename,
     // decompression or extraction.
     Zip z( zip_buffer );
 
-    // Now find the maximum (uncompressed) size of all the
-    // entries in the archive.
-    auto getter  = []( ZipStat const& zs ) { return zs.size(); };
-    res.max_size = getter( maximum( z.begin(), z.end(), getter ) );
-
     // Create a copy of z's underlying vector of ZipStats so
     // that we can reorder them.  Note that the resultant vector
     // will have views taken off of it so must remain alive.
@@ -301,15 +278,9 @@ UnzipSummary p_unzip( string    filename,
     // ZipStat data structures.
     res.watch.stop( "load_zip" );
 
-    if( !chunk_size )
-        // Use the max file size in the zip as chunk size.
-        // Warning: this can cause allocation failures.
-        chunk_size = res.max_size;
-    // If the archive consists of only empty elements then we
-    // are allowed to have a chunk size of zero, otherwise it
-    // must be non-zero.
-    FAIL( res.max_size > 0 && chunk_size < 1,
-        "Invalid chunk size" );
+    // If this is zero then we'll go into an endless loop writing
+    // chunks of size zero to disk.
+    FAIL( chunk_size < 1, "Invalid chunk size: " << chunk_size );
     res.chunk_size_used = chunk_size;
 
     /************************************************************
@@ -319,37 +290,38 @@ UnzipSummary p_unzip( string    filename,
     * maps it to another name.  This new name is used as the
     * temporary location to use when extracting/writing the file.
     * After extraction is complete it will be renamed to the
-    * proper name. */
+    * proper name.
+    *
+    * There could potentially be multiple uses for this mapping
+    * function, but here we're using it accomplish something
+    * kind of odd.
+    *
+    * We're going to map files to temp names, but only ones
+    * whose names meet certain criteria.  Various empirical
+    * observations were made on Windows machines running
+    * Symantec Anti-Virus software.  It appears that this AV
+    * software has a negative affect on file creation time in
+    * general, but particularly so for files whose names
+    * contain extensions longer than three characters.
+    *
+    * So, when an archived file has an extension longer than
+    * three chars we will, instead of extracting it directly
+    * as for most other files, we will extract it to a temporary
+    * file with an extention == three chars.  Then, after we
+    * are finished extracting, we will rename it to the original
+    * name.  For some mysterious reason, this can significantly
+    * boost performance on the Windows desktop machines on which
+    * measurements were taken (at the time of this writing).
+    *
+    * And it gets even stranger... if the filename begins
+    * with a dot we will keep it as is... this comes from
+    * empirical observations that suggest that mapping files
+    * that start with a dot (even when they have an extension
+    * > 3 chars) actually slows it down again. */
 
     // The default mapping does nothing.
     NameMap get_tmp_name = id<string>;
 
-    // There could potentially be multiple uses for this mapping
-    // function, but here we're using it accomplish something
-    // kind of odd.
-    //
-    // We're going to map files to temp names, but only ones
-    // whose names meet certain criteria.  Various empirical
-    // observations were made on Windows machines running
-    // Symantec Anti-Virus software.  It appears that this AV
-    // software has a negative affect on file creation time in
-    // general, but particularly so for files whose names
-    // contain extensions longer than three characters.
-    //
-    // So, when an archived file has an extension longer than
-    // three chars we will, instead of extracting it directly
-    // as for most other files, we will extract it to a temporary
-    // file with an extention == three chars.  Then, after we
-    // are finished extracting, we will rename it to the original
-    // name.  For some mysterious reason, this can significantly
-    // boost performance on the Windows desktop machines on which
-    // measurements were taken (at the time of this writing).
-    //
-    // And it gets even stranger... if the filename begins
-    // with a dot we will keep it as is... this comes from
-    // empirical observations that suggest that mapping files
-    // that start with a dot (even when they have an extension
-    // > 3 chars) actually slows it down again.
     if( short_exts ) {
         // This function must be thread safe!
         get_tmp_name = []( string const& input ) {

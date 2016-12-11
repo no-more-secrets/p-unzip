@@ -4,12 +4,14 @@
 #pragma once
 
 #include "macros.hpp"
-#include "ptr_resource.hpp"
+#include "handle.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 /****************************************************************
@@ -54,11 +56,20 @@ std::string to_string( T const& x ) {
     return ss.str();
 }
 
+// Convert s to a positive integer and throw if conversion
+// fails or if conversion succeeds but number is < 0.
+template<typename T>
+T to_uint( std::string const& s ) {
+    std::istringstream ss( s );
+    long res; ss >> res;
+    FAIL( !ss, "failed to convert \"" << s << "\" to number" );
+    FAIL( res < 0, "number " << res << " must not be negative." );
+    return static_cast<T>( res );
+}
+
 // "Identity" function (returns argument by value)
 template<typename T>
-auto id( T t ) -> T {
-    return t;
-}
+auto id( T t ) -> T { return t; }
 
 // This function will find the maximum over an iterable given a
 // key function.  The key function will be applied to each
@@ -77,8 +88,9 @@ auto maximum( It start, It end, KeyF f ) -> decltype( *start ) {
     // as in the case that the input list is empty) then we must
     // fail because the function signature requires us to return
     // a value of the iterable which, in that case, we would not
-    // have.
-    FAIL_( max_iter == end );
+    // have.  I think this should only happen when the input
+    // list is empty.
+    FAIL( max_iter == end, "cannot call maximum on empty list" );
     return *max_iter;
 }
 
@@ -170,7 +182,7 @@ Range<T> make_range( T begin, T end ) {
 /****************************************************************
 * Resource manager for raw buffers
 ****************************************************************/
-class Buffer : public PtrRes<void, Buffer> {
+class Buffer : public Handle<void, Buffer> {
 
     size_t length;
 
@@ -183,7 +195,7 @@ public:
     // move constructors (which, if it did, should be identical
     // to this one below).
     Buffer( Buffer&& from )
-        : PtrRes<void, Buffer>( std::move( from ) )
+        : Handle<void, Buffer>( std::move( from ) )
         , length( from.length )
     {}
 
@@ -222,4 +234,5 @@ public:
     // `explicit` to prevent accidental conversions which
     // might allow code to compile that should not compile.
     explicit operator bool() const { return has_value; }
+
 };

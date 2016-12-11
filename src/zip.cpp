@@ -143,15 +143,15 @@ zip_uint64_t ZipStat::comp_size() const {
     return stat.comp_size;
 }
 
-// Last mode time.  This will be rounded to the nearest
-// two-second boundary and contains no timezone.  Also,
+// Last mod time.  This will be rounded to the nearest
+// two-second boundary and contains no timezone since
 // zip files do not store timezone.  So the time returned
 // by this function must be interpreted based on the
 // known timezone of the machine that created the zip.
+// Typically, it is interpreted as local time.
 time_t ZipStat::mtime() const {
     FAIL_( !(stat.valid & ZIP_STAT_MTIME) );
     return stat.mtime;
-    //return chrono::system_clock::from_time_t( stat.mtime );
 }
 
 // Will return true if the entry represents a folder,

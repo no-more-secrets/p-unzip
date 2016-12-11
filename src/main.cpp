@@ -15,6 +15,7 @@
 #include <thread>
 
 using namespace std;
+using options::option_get;
 
 /****************************************************************
 * Entrypoint into program from the arg parsing framework.  This
@@ -28,8 +29,8 @@ int main_( options::positional positional,
     /************************************************************
     * Get miscellaneous options
     ************************************************************/
-    bool quiet      = has_key( options, 'q' );
-    bool short_exts = has_key( options, 'a' );
+    bool q    = has_key( options, 'q' ); // quiet
+    bool exts = has_key( options, 'a' ); // no long extensions
 
     /************************************************************
     * Determine timestamp (TS) policy
@@ -38,25 +39,24 @@ int main_( options::positional positional,
     * are set on the extracted files.  If the timestamps are of
     * no concern then it might be advantageous to specify
     * "current" which will not set them at all -- it will leave
-    * them to take on the time that they are created/written.
-    * If timestamps are important then "stored" will try to
-    * reproduce those stored in the zip file.  However, note that
-    * zip files do not store timezone, so there will be certain
-    * discrepancies associated with that (local timezone is
-    * assumed when extracting).  If all the files are to have
-    * the same timestamp then we can simply supply an integer
-    * value for the t argument.  If the value of the t argument
-    * starts with a plus or minus sign then it is interpreted as
-    * a timezone adjustment.  In that case, the decompressed
-    * files will be given the timestamp stored in the zip file
-    * but adjusted according to the time zone.  The time zone
-    * (offset) is interpreted as the time zone in which the zip
-    * was generated.  This can sometimes be necessary since zip
-    * files do not store timezone. */
+    * them to take on the time that they are created/written,
+    * which avoids an extra hit to the file system to change it.
+    * If timestamps are important then you might just leave out
+    * this option and it will default to using the timestamps
+    * stored in the zip file.  However, note that zip files do
+    * not store timezone, so there will be certain discrepancies
+    * associated with that (local timezone is assumed when
+    * extracting).  Furthermore, even correctly reproducing the
+    * timestamp as a local time (by this program) requires the
+    * C runtime to handle daylight savings time properly (due
+    * to the implementation of libzip), which may or may not
+    * work properly.  Lastly, if all the files are to have the
+    * same timestamp then we can simply supply an integer value
+    * for the t argument.  This is interpreted as a Linux epoch
+    * time, and all files will be set to that timestamp. */
 
     // By default we just use the "id" function that will use
-    // the exact timestamp stored in the zip.  Note however that
-    // this does not account for time zone.
+    // the exact timestamp stored in the zip.
     auto id_transform = []( time_t t ){ return t; };
     TSXFormer ts_xform( id_transform );
     if( has_key( options, 't' ) ) {
@@ -64,12 +64,9 @@ int main_( options::positional positional,
         if( t == "current" )
             // Just let the timestamps fall where they may.
             ts_xform = []( time_t ){ return 0; };
-        else if( t == "stored" )
-            // Use timestmaps stored inside zip file.
-            ts_xform = id_transform;
         else {
             // All extracted files should have this timestamp.
-            time_t fixedStamp = atoi( t.c_str() );
+            time_t fixedStamp = to_uint<time_t>( t );
             FAIL( fixedStamp == 0, "invalid integer for t arg" );
             ts_xform = [=]( time_t ){ return fixedStamp; };
         }
@@ -79,86 +76,45 @@ int main_( options::positional positional,
     * Determine the number of jobs to use
     ************************************************************/
     // First initialize the number of jobs to its default value.
-    size_t jobs = 1;
+    string jobs( option_get( options, 'j', "1" ) );
+    size_t j;
     // Next, let's get the number of threads that the machine
     // naturally supports (this will include hyperthreads).  Even
     // if we don't need this, we might want to log it at the end.
     auto num_threads = thread::hardware_concurrency();
-    // Now let's see if the user has specified the `-j` parameter
-    // and get its value.  Note that, for this parameter, we are
-    // guaranteed to have a value by the options parsing framework
-    // (which knows that this parameter must have a value),
-    // although it may not be valid.
-    if( has_key( options, 'j' ) ) {
-        string j = options['j'].get();
-        // max  - use the max number of threads available.
-        // auto - choose an "optimal" number of threads.
+    // The user can override number of jobs by specifying -j.
+    if( jobs == "max" )
+        // Assume that num_threads includes the hyperthreads,
+        // so in that case we probably don't want to go above
+        // that.
+        j = num_threads;
+    else if( jobs == "auto" )
+        // Assume we have hyper-threading; use all of the
+        // "true" threads and then half of the hyperthreads.
+        j = size_t( num_threads*0.75 + 0.5 );
+    else
         // Otherwise, must be a positive integer.
-        if( j == "max" )
-            // Assume that num_threads includes the hyperthreads,
-            // so in that case we probably don't want to go above
-            // that.
-            jobs = num_threads;
-        else if( j == "auto" )
-            // Assume we have hyper-threading; use all of the
-            // "true" threads and then half of the hyperthreads.
-            jobs = size_t( num_threads*0.75 + 0.5 );
-        else
-            // atoi should apparently return zero when the
-            // conversion cannot be performed, which, luckily
-            // for us, is an invalid value.
-            jobs = atoi( j.c_str() );
-    }
+        j = to_uint<size_t>( jobs );
+
     // No matter how we got number of jobs, check it once more.
-    FAIL( jobs < 1, "invalid number of jobs: " << jobs );
+    FAIL( j < 1, "invalid number of jobs: " << j );
 
     /************************************************************
     * Determine the chunk size
     *************************************************************
     * When extracting a file from the zip archive, the chunk
     * size is the number of bytes that are decompressed and
-    * written to the output file at a time.  The user can
-    * specify "max" which will write the entire file at once,
-    * however this requires being able to hold the entire
-    * decompressed file in memory at once (and for every thread).
-    * With zip files that contain large files together with
-    * multithreaded execution it is desireable to limit the
-    * chunk size to save memory.  Also, this allows you to
-    * control size of the blocks that are written to disk which
-    * may have an effect on disk write throughput. */
-    size_t chunk = DEFAULT_CHUNK;
-    if( has_key( options, 'c' ) ) {
-        string c = options['c'].get();
-        if( c == "max" )
-            // Use the max file size in the zip as chunk size.
-            // (the zero will be replaced with max file size
-            // later when its value is known).  WARNING: this
-            // can cause allocation failures.
-            chunk = 0;
-        else {
-            // atoi should apparently return zero when the
-            // conversion cannot be performed, which, luckily
-            // for us, is an invalid value.
-            chunk = atoi( c.c_str() );
-            // Here we need to make sure this value isn't zero
-            // because zero is what atoi returns on failure.
-            // This means that a value of zero cannot be given
-            // on the commandline, which is fine, because it is
-            // used to represent "max" anyway (see above).  Also,
-            // note that, although a value of 1 is admissible,
-            // it is definitely not recommended (you should
-            // choose a power of 2 at least 512).
-            FAIL( chunk < 1, "Invalid chunk size" );
-        }
-    }
+    * written to the output file at a time.  With zip files that
+    * contain large files together with multithreaded execution
+    * it is desireable to limit the chunk size to save memory. */
+    auto chunk( to_uint<size_t>(
+        option_get( options, 'c', DEFAULT_CHUNK_S ) ) );
 
     /************************************************************
     * Distribution of files to the threads
     *************************************************************
     * See if the user has specified a distribution strategy. */
-    string strategy = has_key( options, 'd' )
-                    ? options['d'].get()
-                    : DEFAULT_DIST;
+    string strategy( option_get( options, 'd', DEFAULT_DIST ) );
 
     /************************************************************
     * Get zip file name
@@ -170,19 +126,9 @@ int main_( options::positional positional,
 
     /************************************************************
     * Unzip
-    ************************************************************/
-    UnzipSummary summary( p_unzip( file,
-                                   jobs,
-                                   quiet,
-                                   strategy,
-                                   chunk,
-                                   ts_xform,
-                                   short_exts ) );
-
-    /************************************************************
-    * Print out diagnostics
-    ************************************************************/
-    cerr << summary;
+    *************************************************************
+    * Do the unzip and print out the diagnostics returned. */
+    cerr << p_unzip( file, j, q, strategy, chunk, ts_xform, exts );
 
     return 0;
 }

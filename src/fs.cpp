@@ -26,17 +26,17 @@ using namespace std;
 
 // These are for setting time stamps of files
 #ifdef POSIX
-#    include <utime.h>
+#   include <utime.h>
 #else
-#    include <sys/utime.h>
+#   include <sys/utime.h>
 #endif
 
 namespace {
 
 /* Holder for file info in a platform-independent format. */
 struct Stat {
-    bool exists;
-    bool is_folder;
+    bool exists;    /* does the file exists */
+    bool is_folder; /* is the file a folder */
 };
 
 /* Return a platform-independent structure that will give info
@@ -255,7 +255,7 @@ OptPairStr split_ext( string const& s ) {
 }
 
 /****************************************************************
-* High-level file system utilities
+* File system utilities with platform-specific implementations
 *****************************************************************
 * This is a helper function which will consult a cache
 * before hitting the file system in order to help implement
@@ -327,8 +327,9 @@ void rename_file( string const& path, string const& path_new ) {
         /* Linux */
         ::rename,
         /* Windows */
-        []( char const* x, char const* y ) -> bool
-            { return !MoveFileEx( x, y, MOVEFILE_REPLACE_EXISTING ); }
+        []( char const* x, char const* y ) -> bool {
+            return !MoveFileEx( x, y, MOVEFILE_REPLACE_EXISTING );
+        }
     );
     // Now do the rename and check return code.
     FAIL( func( path.c_str(), path_new.c_str() ),

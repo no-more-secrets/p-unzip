@@ -4,7 +4,7 @@
 #pragma once
 
 #include "fs.hpp"
-#include "ptr_resource.hpp"
+#include "handle.hpp"
 #include "utils.hpp"
 
 #include <time.h>
@@ -14,7 +14,6 @@
 /****************************************************************
 * ZipStat
 ****************************************************************/
-// TODO: do the zip_stat_t objects need to be released?
 class ZipStat {
 
 public:
@@ -51,7 +50,7 @@ private:
 /****************************************************************
 * Zip
 ****************************************************************/
-class Zip : public PtrRes<zip_t, Zip> {
+class Zip : public Handle<zip_t, Zip> {
 
 public:
     Zip( Buffer::SP& zs );

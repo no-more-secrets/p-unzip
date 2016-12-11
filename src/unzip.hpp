@@ -16,10 +16,11 @@
 // Chunk size is the size of the chunk in which which data will
 // be written to disk as it is decompressed.
 #define DEFAULT_CHUNK 4096
+#define DEFAULT_CHUNK_S TO_STRING( DEFAULT_CHUNK )
 
 // This enum represents the possible policies for dealing with
 // timestamps when extracting zip files.
-using TSXFormer = std::function<time_t ( time_t )>;
+using TSXFormer = std::function<time_t( time_t )>;
 
 /****************************************************************
 * This structure is used to return statistics and diagnostic info
@@ -31,11 +32,6 @@ struct UnzipSummary {
     UnzipSummary( size_t jobs );
     // VS 2013 can't generate default move constructors
     UnzipSummary( UnzipSummary&& from );
-
-    // No harm in copying, but let's do this to prevent copying
-    // which is not really necessary.
-    UnzipSummary( UnzipSummary const& )            = delete;
-    UnzipSummary& operator=( UnzipSummary const& ) = delete;
 
     std::string            filename;
     // These next two should just echo the values that are passed
@@ -60,8 +56,6 @@ struct UnzipSummary {
     std::vector<size_t>    bytes_ts;
     // Total number of folders in the zip archive
     size_t                 folders;
-    // Uncompressed size of largest file in archive.
-    size_t                 max_size;
     // Number of files for which temp names were assigned
     size_t                 num_temp_names;
     // This holds timing info for the top-level process.
@@ -120,6 +114,11 @@ std::ostream& operator<<( std::ostream& out,
 *             three characters will be temporarily written to
 *             files with short extensions while being extracted,
 *             then will later be renamed to their original name.
+*             This is an obscure feature used only on Windows
+*             running Symantec anti-virus software to workaround
+*             some possibly strange performance issues with
+*             file creation times for file names meeting certain
+*             criteria.
 *
 * This function will throw on any error. So if it returns, then
 * hopefully that means that everything went according to plan.

@@ -3,7 +3,7 @@
 ****************************************************************/
 #pragma once
 
-#include "ptr_resource.hpp"
+#include "handle.hpp"
 #include "utils.hpp"
 
 #include <string>
@@ -12,7 +12,7 @@
 /****************************************************************
 * Resource manager for C FILE handles
 ****************************************************************/
-class File : public PtrRes<FILE, File> {
+class File : public Handle<FILE, File> {
 
     std::string mode;
 
@@ -140,13 +140,14 @@ void mkdirs_p( std::vector<FilePath> const& paths );
 // Set the time stamp of a file given a path.  Will throw if it
 // fails.  Will set both mod time and access time to this value.
 // Since we're using time_t this means the resolution is only at
-// the level of one second, however this is fine here because zip
-// files only have a resolution of two seconds.  The time is
-// interpreted as the epoch time (so it implicitly has a time
-// zone).  However note that zip files do not carry any time zone
-// information, so interpreting a timestamp from a zip file as
-// an epoch time can cause inconsistencies when dealing with
-// zip files that are zipped and unzipped in different timezones.
+// the level of one second, however this is fine here because
+// zip files only have a resolution of two seconds.  The time
+// is interpreted as the epoch time (so it implicitly has a
+// time zone).  However, note that zip files do not carry any
+// time zone information, so interpreting a timestamp from a
+// zip file as an epoch time can cause inconsistencies when
+// dealing with zip files that are zipped and unzipped in
+// different timezones.
 void set_timestamp( std::string const& path, time_t time );
 
 // Rename a file.  Will detect when arguments are equal and do

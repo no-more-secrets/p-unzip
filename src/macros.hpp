@@ -28,28 +28,13 @@
 
 #define FAIL_( a ) FAIL( a, "" )
 
-// Braces to avoid variable name conflicts.
-#define LOG( a ) {                                             \
-    std::ostringstream out;                                    \
-    out << a;                                                  \
-    cerr << out.str() << std::endl;                            \
-}
-
-// Log a key/value pair
-#define LOGP( a, b ) {                                         \
-    std::ostringstream out_k, out_v;                           \
-    out_k << a; out_v << b;                                    \
-    LOG( std::setw( 17 ) << std::left << out_k.str()           \
-         << ": " << out_v.str() );                             \
-}
-
 #define TRY try {
 
 #define CATCH_ALL                                              \
     } catch( std::exception const& e ) {                       \
-        LOG( e.what() );                                       \
+        cerr << e.what();                                      \
     } catch( ... ) {                                           \
-        LOG( "unknown error" );                                \
+        cerr << "unknown error";                               \
     }
 
 // This can be used to execute an arbitrary block of code
