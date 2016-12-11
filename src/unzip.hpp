@@ -30,8 +30,6 @@ using TSXFormer = std::function<time_t( time_t )>;
 struct UnzipSummary {
 
     UnzipSummary( size_t jobs );
-    // VS 2013 can't generate default move constructors
-    UnzipSummary( UnzipSummary&& from );
 
     std::string            filename;
     // These next two should just echo the values that are passed
@@ -51,9 +49,9 @@ struct UnzipSummary {
     // Number of files extracted by each thread (ts = threads).
     std::vector<size_t>    files_ts;
     // Total bytes written (i.e., total uncompressed size).
-    size_t                 bytes;
+    uint64_t               bytes;
     // Number of bytes extracted by each thread (ts = threads).
-    std::vector<size_t>    bytes_ts;
+    std::vector<uint64_t>  bytes_ts;
     // Total number of folders in the zip archive
     size_t                 folders;
     // Number of files for which temp names were assigned

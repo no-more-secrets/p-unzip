@@ -37,7 +37,7 @@ index_lists wrapper( size_t             threads,
                      files_range const& files,
                      distributor_t      func ) {
     // Call the actual distribution function.
-    vector<vector<size_t>> thread_idxs = func( threads, files );
+    vector<vector<uint64_t>> thread_idxs = func( threads, files );
     // Now a sanity check to make sure we got pricisely the
     // right number of files.
     size_t count = 0;
@@ -46,9 +46,9 @@ index_lists wrapper( size_t             threads,
     FAIL_( count != files.size() );
     // Another sanity check to make sure that each index appears
     // only once both within a single thread and across threads.
-    set<size_t> idxs;
+    set<uint64_t> idxs;
     for( auto const& ti : thread_idxs ) {
-        for( size_t idx : ti ) {
+        for( uint64_t idx : ti ) {
             FAIL_( has_key( idxs, idx ) );
             idxs.insert( idx );
         }
@@ -69,7 +69,7 @@ index_lists wrapper( size_t             threads,
 // thread, the Nth file to the (N % threads) thread.
 index_lists distribution_cyclic( size_t             threads,
                                  files_range const& files ) {
-    vector<vector<size_t>> thread_idxs( threads );
+    vector<vector<uint64_t>> thread_idxs( threads );
     size_t count = 0;
     for( auto& zs : files )
         thread_idxs[count++ % threads].push_back( zs.index() );
@@ -102,7 +102,7 @@ index_lists distribution_sliced( size_t             threads,
     // residual ones will be distributed as in the cyclic
     // strategy since there are so few of them that it doesn't
     // really matter how they're distributed.
-    vector<vector<size_t>> thread_idxs( threads );
+    vector<vector<uint64_t>> thread_idxs( threads );
     size_t chunk = max( stats.size()/threads, size_t( 1 ) );
     size_t residual   = stats.size() % threads;
     size_t sliced_end = stats.size() - residual;
@@ -144,11 +144,11 @@ index_lists distribution_bytes(  size_t             threads,
         return l.size() > r.size();
     };
     sort( stats.begin(), stats.end(), by_size );
-    vector<vector<size_t>> thread_idxs( threads );
+    vector<vector<uint64_t>> thread_idxs( threads );
     // These will hold the running sums of total (uncompressed)
     // bytes that each thread will have to extract.  We want
     // ideally (in this strategy at least) to balance them.
-    vector<size_t> totals( threads, 0 );
+    vector<uint64_t> totals( threads, 0 );
     for( auto const& zs : stats ) {
         auto where = min_element( totals.begin(), totals.end() )
                    - totals.begin();
@@ -177,7 +177,7 @@ STRATEGY( bytes ) // Register this strategy
 // In practice, the idea is that the metric (which is a number)
 // should be proportional to the runtime necessary to extract
 // the given zip entry.  This could be computed in various ways.
-// The signature of MatricFunc is: size_t( ZipStat const& ).
+// The signature of MetricFunc is: uint64_t( ZipStat const& ).
 template<typename MetricFunc>
 index_lists by_folder( size_t             threads,
                        files_range const& files,
@@ -190,13 +190,13 @@ index_lists by_folder( size_t             threads,
     struct Data {
         Data() : m_metric( 0 ) {}
         // Add a new file and update the metric.
-        void add( ZipStat const& zs, size_t delta ) {
+        void add( ZipStat const& zs, uint64_t delta ) {
             m_idxs.push_back( zs.index() );
             m_metric += delta;
         }
         // These are indexes of files that are in this folder.
-        vector<size_t> m_idxs;
-        uint64_t       m_metric;
+        vector<uint64_t> m_idxs;
+        uint64_t         m_metric;
     };
     // First we need to aggregate files that are in the same
     // folder.
@@ -216,8 +216,8 @@ index_lists by_folder( size_t             threads,
     // At this point we have a list of folders along with the
     // total metric of each folder, so now just do an equitable
     // distribution of folders among the threads.
-    vector<vector<size_t>> thread_idxs( threads );
-    vector<uint64_t>       metrics( threads );
+    vector<vector<uint64_t>> thread_idxs( threads );
+    vector<uint64_t>         metrics( threads );
 
     for( auto const& info : folder_infos ) {
         auto idx = min_element( metrics.begin(), metrics.end() )

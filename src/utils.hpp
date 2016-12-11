@@ -18,7 +18,7 @@
 * Convenience methods
 ****************************************************************/
 // Format a quantity of bytes in human readable form.
-std::string human_bytes( size_t bytes );
+std::string human_bytes( uint64_t bytes );
 
 // Does the set contain the given key.
 template<typename ContainerT, typename KeyT>

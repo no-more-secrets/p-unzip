@@ -15,7 +15,7 @@ using namespace std;
 * Convenience methods
 ****************************************************************/
 // Format a quantity of bytes in human readable form.
-std::string human_bytes( size_t bytes ) {
+std::string human_bytes( uint64_t bytes ) {
     ostringstream out;
     size_t GB = 1024*1024*1024;
     size_t MB = 1024*1024;

@@ -23,8 +23,8 @@ Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
     own = true;
     // Lastly, count number of files in the archive and get
     // each of their stats and cache them.
-    size_t size = zip_get_num_entries( p, ZIP_FL_UNCHANGED );
-    for( size_t i = 0; i < size; ++i ) {
+    int64_t size = zip_get_num_entries( p, ZIP_FL_UNCHANGED );
+    for( int64_t i = 0; i < size; ++i ) {
         zip_stat_t stat;
         FAIL( zip_stat_index( p, i, ZIP_FL_UNCHANGED, &stat ),
            "failed to stat item" << i );
@@ -35,8 +35,8 @@ Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
 // Create a new buffer of the size necessary to hold the
 // uncompressed contents, then do the uncompression and
 // return the buffer.
-Buffer Zip::extract( size_t idx ) const {
-    Buffer out( at( idx ).size() );
+Buffer Zip::extract( uint64_t idx ) const {
+    Buffer out( size_t( at( idx ).size() ) );
     extract_in( idx, out );
     return out;
 }
@@ -44,9 +44,9 @@ Buffer Zip::extract( size_t idx ) const {
 // Uncompress a file directly to disk and allow caller
 // to supply a buffer to hold the chunks and to control
 // chunk size.
-void Zip::extract_to( size_t  idx,
-                      string  const& file,
-                      Buffer& buf ) const {
+void Zip::extract_to( uint64_t idx,
+                      string   const& file,
+                      Buffer&  buf ) const {
     FAIL_( buf.size() == 0 );
     // First open the file to which we will write the result.
     File out( file, "wb" );
@@ -84,8 +84,8 @@ void Zip::extract_to( size_t  idx,
 
 // Uncompress file into existing buffer.  Throws if the
 // buffer is not big enough.
-void Zip::extract_in( size_t idx, Buffer& buffer ) const {
-    size_t fsize = at( idx ).size();
+void Zip::extract_in( uint64_t idx, Buffer& buffer ) const {
+    uint64_t fsize( at( idx ).size() );
     FAIL_( fsize > buffer.size() );
     zip_file_t* zf;
     FAIL_( !(zf = zip_fopen_index( p, idx, 0 )) );
@@ -110,9 +110,9 @@ void Zip::destroyer() {
 }
 
 // Access a given element of the archive.
-ZipStat const& Zip::at(size_t idx) const {
+ZipStat const& Zip::at( uint64_t idx ) const {
     FAIL_( idx >= stats.size() );
-    return stats[idx];
+    return stats[size_t( idx )];
 }
 
 /****************************************************************

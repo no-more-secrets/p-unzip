@@ -31,7 +31,7 @@ struct thread_output {
     size_t               files;
     // Total number of bytes written by this thread.  This is
     // for diagnostics and sanity checking.
-    size_t               bytes;
+    uint64_t             bytes;
     // Total number of files that were written to temporary
     // files during extraction;
     size_t               tmp_files;
@@ -54,14 +54,14 @@ using NameMap = function<string( string const& )>;
 * represented by the vector of indices into the list of
 * archived files.
 ****************************************************************/
-void unzip_worker( size_t                thread_idx,
-                   Buffer::SP&           zip_buffer,
-                   vector<size_t> const& idxs,
-                   size_t                chunk_size,
-                   bool                  quiet,
-                   TSXFormer             ts_xform,
-                   NameMap const&        get_tmp_name,
-                   thread_output&        data )
+void unzip_worker( size_t                  thread_idx,
+                   Buffer::SP&             zip_buffer,
+                   vector<uint64_t> const& idxs,
+                   size_t                  chunk_size,
+                   bool                    quiet,
+                   TSXFormer               ts_xform,
+                   NameMap const&          get_tmp_name,
+                   thread_output&          data )
 {
     // This mutex protects logging of file names during unzip.
     // Without this lock the various threads' printing would
@@ -88,7 +88,7 @@ void unzip_worker( size_t                thread_idx,
         // and pre-created.
         string name( zip[idx].name() );
         // Get size of the uncompressed data of entry.
-        size_t size = zip[idx].size();
+        uint64_t size = zip[idx].size();
         // If the caller chooses, we log the name of the file
         // being unzipped by protect the logging with a mutex
         // otherwise different threads will step on each other
@@ -118,7 +118,7 @@ void unzip_worker( size_t                thread_idx,
         // Now take the time stored in the zip archive, pass
         // it through the user supplied transformation function,
         // and store the result if there is one.
-        size_t time = ts_xform( zip[idx].mtime() );
+        time_t time = ts_xform( zip[idx].mtime() );
         if( time )
             set_timestamp( name, time );
         // For auditing / sanity checking purposes.
@@ -434,7 +434,7 @@ UnzipSummary p_unzip( string    filename,
     res.filename  = filename;
     res.jobs_used = jobs;
 
-    size_t total_bytes_in_zip = 0;
+    uint64_t total_bytes_in_zip = 0;
     for( auto const& zs : files )
         total_bytes_in_zip += zs.size();
 

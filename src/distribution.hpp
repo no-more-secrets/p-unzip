@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-using index_lists = std::vector<std::vector<size_t>>;
+using index_lists = std::vector<std::vector<uint64_t>>;
 using files_range = Range<std::vector<ZipStat>::iterator>;
 typedef index_lists (*distributor_t)( size_t, files_range const& );
 

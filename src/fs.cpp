@@ -7,9 +7,10 @@
 #include "fs.hpp"
 #include "utils.hpp"
 
-#include <string>
-#include <set>
 #include <algorithm>
+#include <limits>
+#include <set>
+#include <string>
 
 using namespace std;
 
@@ -30,6 +31,9 @@ using namespace std;
 #else
 #   include <sys/utime.h>
 #endif
+
+// Someone is defining this somewhere and it's f*ck*ng up our sh**.
+#undef max
 
 namespace {
 
@@ -55,8 +59,9 @@ Stat stat( char const* path ) {
         return res;
     }
     res.exists = true;
-    res.is_folder = bool(
-        buf.st_mode & OS_SWITCH( S_IFDIR, _S_IFDIR ) );
+    res.is_folder =
+        ( buf.st_mode & OS_SWITCH( S_IFDIR, _S_IFDIR ) ) > 0
+        ? true : false;
     return res;
 }
 
@@ -108,10 +113,13 @@ Buffer File::read() {
 // Will write the entire contents of buffer to file starting
 // from the file's current position.  Will throw if not all
 // bytes written.
-void File::write( Buffer const& buffer, size_t count ) {
+void File::write( Buffer const& buffer, uint64_t count ) {
     FAIL( mode != "wb", "attempted write in mode " << mode );
     FAIL_( count > buffer.size() );
-    size_t written = fwrite( buffer.get(), 1, count, p );
+    // Make sure that count is not too large since we're going to
+    // cast it down to a size_t which may be 32 bit.
+    FAIL_( count > numeric_limits<size_t>::max() );
+    size_t written = fwrite( buffer.get(), 1, size_t( count ), p );
     FAIL_( written != count );
 }
 

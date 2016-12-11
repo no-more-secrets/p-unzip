@@ -28,7 +28,7 @@ public:
     // Will write `count` bytes of buffer to file starting
     // from the file's current position.  Will throw if not all
     // bytes written.
-    void write( Buffer const& buffer, size_t count );
+    void write( Buffer const& buffer, uint64_t count );
 };
 
 /****************************************************************

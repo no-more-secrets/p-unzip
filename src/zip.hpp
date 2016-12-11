@@ -61,23 +61,23 @@ public:
     // Access the given element of the archive with a zero-based
     // index and return the ZipStat describing it at the time
     // that the zip was originally opened.
-    ZipStat const& at(size_t idx) const;
+    ZipStat const& at( uint64_t idx ) const;
 
     // Access the given element of the archive with a zero-based
     // index and return the ZipStat describing it at the time
     // that the zip was originally opened.
-    ZipStat const& operator[](size_t idx) const {
+    ZipStat const& operator[]( uint64_t idx ) const {
         return at( idx );
     }
 
     // Create a new buffer of the size necessary to hold the
     // uncompressed contents, then do the uncompression and
     // return the buffer.
-    Buffer extract( size_t idx ) const;
+    Buffer extract( uint64_t idx ) const;
 
     // Uncompress file into existing buffer.  Throws if the
     // buffer is not big enough.
-    void extract_in( size_t idx, Buffer& buffer ) const;
+    void extract_in( uint64_t idx, Buffer& buffer ) const;
 
     // Uncompress file directly to disk.  If the disk file does
     // not exist it will be created, otherwise it will be
@@ -91,9 +91,9 @@ public:
     // time and to control throughput in the disk writes.
     // Note that the size of the supplied buffer, which holds
     // the chunks as they are decompressed, sets the chunk size.
-    void extract_to( size_t       idx,
-                     std::string  const& file,
-                     Buffer&      buf ) const;
+    void extract_to( uint64_t    idx,
+                     std::string const& file,
+                     Buffer&     buf ) const;
 
     typedef std::vector<ZipStat>::const_iterator
             const_iterator;
