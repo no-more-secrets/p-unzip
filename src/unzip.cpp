@@ -215,16 +215,17 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
 // number, then use each of the first three bytes in the hash
 // to select three characters from a list to form a three
 // character string.  There are about 46k possible results.
-string ext3( string s ) {
+string ext3( string const& s ) {
     // List of all chars that we will use when generating file
     // extensions.  We don't include uppercase letters because on
     // Windows/OSX file names are case-insensitive.
-    string const exts( "abcdefghijklmnopqrstuvwxyz0123456789" );
+    static string const cs( "abcdefghijklmnopqrstuvwxyz0123456789" );
+    static size_t const size( cs.size() );
     // Helper to get the nth element of string modulo its size.
-    auto get = [&]( size_t n ){ return exts[n % exts.size()]; };
+    static auto get = [&]( size_t n ){ return cs[n % size]; };
     // Compute the hash
     uint32_t h = string_hash( s );
-    return string( { get(h >> 0), get(h >> 8), get(h >> 16) } );
+    return string( { get( h ), get( h>>8 ), get( h>>16 ) } );
 }
 
 /****************************************************************

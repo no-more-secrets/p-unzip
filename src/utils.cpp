@@ -18,9 +18,9 @@ using namespace std;
 // Compute a primitive but "good enough" hash of a string.
 uint32_t string_hash( string const& s ) {
     // Initialize some variables with some primes.
-    uint32_t const A = 54059, B = 76963;
-    uint32_t hash = 37;
-    for( auto c : s )
+    static uint32_t const A = 54059, B = 76963;
+    uint32_t hash( 37 );
+    for( auto const& c : s )
         hash = (hash * A)^( uint32_t( c ) * B );
     return hash;
 }
