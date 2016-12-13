@@ -56,6 +56,14 @@ std::string to_string( T const& x ) {
     return ss.str();
 }
 
+// Computes a primitive but "good enough" hash of a string.
+// This is not even close to cryptographically secure, but
+// it is fine for this program.  That said, tests have been
+// done to verify that, over the domain of inputs typical
+// of this program, the hashing algorithm produces almost
+// perfectly uniform results.
+uint32_t string_hash( std::string const& s );
+
 // Convert s to a positive integer and throw if conversion
 // fails or if conversion succeeds but number is < 0.
 template<typename T>

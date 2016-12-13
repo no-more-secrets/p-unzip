@@ -210,25 +210,21 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
 
 // The idea of this function is to take an arbitrary input
 // string and then hash it, where the hash is a three-character
-// string suitable for a file extension.  For simplicity we
-// use a primitive implementation which computes a simple hash
-// of the string, then uses the resulting number to select a
-// three-character substring from a fixed string defined in
-// the body of the function.  There are only about 36 possible
-// results, so this is far from a perfect hash, but it meets the
-// two requirements which are that it be thread safe and fast.
+// string made up only of characters suitable for a file
+// extension.  Basically we just hash the string to a 32 bit
+// number, then use each of the first three bytes in the hash
+// to select three characters from a list to form a three
+// character string.  There are about 46k possible results.
 string ext3( string s ) {
     // List of all chars that we will use when generating file
     // extensions.  We don't include uppercase letters because on
     // Windows/OSX file names are case-insensitive.
-    static string const ext_chars( "abcdefghijklmnopqrstuvwxyz"
-                                   "0123456789" );
-    size_t const n = 3; // Return string of this length
-    // Do a primitive hash of the extension.
-    char hash( 0 ); for( auto c : s ) hash += c^hash;
-    // Use the resulting hash (which is a number) as an offset
-    // the character array to select a substring of length three.
-    return ext_chars.substr( hash % (ext_chars.size()-n), n );
+    string const exts( "abcdefghijklmnopqrstuvwxyz0123456789" );
+    // Helper to get the nth element of string modulo its size.
+    auto get = [&]( size_t n ){ return exts[n % exts.size()]; };
+    // Compute the hash
+    uint32_t h = string_hash( s );
+    return string( { get(h >> 0), get(h >> 8), get(h >> 16) } );
 }
 
 /****************************************************************
