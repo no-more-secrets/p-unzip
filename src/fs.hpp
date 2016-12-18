@@ -25,20 +25,20 @@ public:
     // File position and will leave the file position at EOF.
     Buffer read();
 
-    // Will write `count` bytes of buffer to file starting
-    // from the file's current position.  Will throw if not all
-    // bytes written.
+    // Will write `count` bytes of  buffer  to file starting from
+    // the file's current position. Will  throw  if not all bytes
+    // written.
     void write( Buffer const& buffer, uint64_t count );
 };
 
 /****************************************************************
 * FilePath
 *****************************************************************
-* This class is an immutable representation of a file path.
-* It only holds relative paths, as opposed to absolute paths
-* that are rooted at / (Posix) or a drive letter (Windows). Note
-* that these are not constrained to represent real paths, and
-* their components may even be empty. */
+* This class is an immutable  representation  of  a file path. It
+* only holds relative paths,  as  opposed  to absolute paths that
+* are rooted at / (Posix) or  a drive letter (Windows). Note that
+* these are not constrained  to  represent  real paths, and their
+* components may even be empty. */
 class FilePath {
 
 public:
@@ -62,13 +62,13 @@ public:
     // Remove leading component, throw if there are no more.
     FilePath dirname() const;
 
-    // Get basename if one exists; this means basically just the
+    // Get basename if one exists;  this means basically just the
     // last component of the path.
     std::string const& basename() const;
 
-    // Adds the given string to the last component.  Creates
-    // one if there is no last component.  Note: this does not
-    // add a dot automatically.
+    // Adds the given string to  the  last component. Creates one
+    // if there is no last component.  Note:  this does not add a
+    // dot automatically.
     FilePath add_ext( std::string const& ext ) const;
 
     // Mutating join with another FilePath
@@ -96,8 +96,8 @@ private:
 // For convenience
 using OptPairFilePath = Optional<std::pair<FilePath,FilePath>>;
 
-// Similiar to the std::string variant of split_ext, but takes
-// FilePaths, and only considers dots in the last component of
+// Similiar to the std::string  variant  of  split_ext, but takes
+// FilePaths, and only considers  dots  in  the last component of
 // the path.
 OptPairFilePath split_ext( FilePath const& fp );
 
@@ -115,42 +115,41 @@ std::ostream& operator<<( std::ostream& out, FilePath const& path );
 using OptPairStr = Optional<std::pair<std::string,std::string>>;
 
 // If the string contains at least one '.' then it will split the
-// string on the last dot and return the substrings that are to
-// the left and right of it.  The dot on which the string is
-// split is removed; this means that this dot will not appear in
-// either of the output strings, although the "left" component
-// may contain other dots.
+// string on the last dot and  return  the substrings that are to
+// the left and right of it. The dot on which the string is split
+// is removed; this means that this dot will not appear in either
+// of the output strings, although the "left" component may
+// contain other dots.
 OptPairStr split_ext( std::string const& s );
 
 /****************************************************************
 * High-level file system functions
 ****************************************************************/
 
-// Create folder and all parents, and do not fail if it already
-// exists.  Will throw on any other error.  Note: if you are
-// creating multiple folders in succession then you should use
+// Create folder and all parents, and  do  not fail if it already
+// exists. Will throw on any other error. Note: if you are
+// creating multiple folders in  succession  then  you should use
 // mkdirs_p below as it will be more efficient.
 void mkdir_p( FilePath const& path );
 
-// Has the effect of calling mkdir_p on each of the elements in
-// the list.  Implementation is efficient in that it will use a
-// a cache to avoid redundant calls to the filesystem.
+// Has the effect of calling mkdir_p  on  each of the elements in
+// the list. Implementation is efficient in  that it will use a a
+// cache to avoid redundant calls to the filesystem.
 void mkdirs_p( std::vector<FilePath> const& paths );
 
-// Set the time stamp of a file given a path.  Will throw if it
-// fails.  Will set both mod time and access time to this value.
-// Since we're using time_t this means the resolution is only at
-// the level of one second, however this is fine here because
-// zip files only have a resolution of two seconds.  The time
-// is interpreted as the epoch time (so it implicitly has a
-// time zone).  However, note that zip files do not carry any
-// time zone information, so interpreting a timestamp from a
-// zip file as an epoch time can cause inconsistencies when
-// dealing with zip files that are zipped and unzipped in
-// different timezones.
+// Set the time stamp of a  file  given  a path. Will throw if it
+// fails. Will set both mod time  and  access time to this value.
+// Since we're using time_t this means  the resolution is only at
+// the level of one second, however this is fine here because zip
+// files only have a resolution of two seconds. The time is
+// interpreted as the epoch time (so it implicitly has a time
+// zone). However, note that zip files do not carry any time zone
+// information, so interpreting a timestamp from a zip file as an
+// epoch time can cause inconsistencies when dealing with zip
+// files that are zipped and unzipped in different timezones.
 void set_timestamp( std::string const& path, time_t time );
 
-// Rename a file.  Will detect when arguments are equal and do
+// Rename a file. Will detect when arguments are equal and do
 // nothing.
 void rename_file( std::string const& path,
                   std::string const& path_new );

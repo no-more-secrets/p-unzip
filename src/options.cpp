@@ -1,5 +1,5 @@
 /****************************************************************
-* Command line options processing.  This module is generic and
+* Command line options processing. This module is generic and
 * does not depend on the specific options of any one program.
 ****************************************************************/
 #include "options.hpp"
@@ -11,15 +11,15 @@ using namespace std;
 
 namespace options {
 
-// For convenience: this function is used ONLY on options that
+// For convenience: this function  is  used  ONLY on options that
 // can take values, and furthermore, it is assumed that all
 // options in the map that must take values will have values.
-// This will be the case if this options map was prepared by
-// the framework.  In any case, it will get the value of an
-// option if that option is present in the map.  If the option
-// is not present in the map it will return the default value.
-// Again, if the option is present in the map but has an empty
-// Optional value then an exception will be throw.
+// This will be the case if this  options map was prepared by the
+// framework. In any case, it will get  the value of an option if
+// that option is present in the map. If the option is not
+// present in the map it will return the default value. Again, if
+// the option is present in the map but has an empty Optional
+// value then an exception will be throw.
 string option_get( options& op, char k, string const& def ) {
     if( !has_key( op, k ) )
         return def;
@@ -29,7 +29,7 @@ string option_get( options& op, char k, string const& def ) {
 }
 
 /****************************************************************
-* Arg: container for holder a parameter a labeling it as either
+* Arg: container for holder a  parameter  a labeling it as either
 * an option or non-option (option means starts with a dash).
 * These objects are immutable.
 ****************************************************************/
@@ -51,36 +51,36 @@ public:
         }
     }
 
-    /* Now we have one getter for each member, but with
-     * some safety checks because not all members should
-     * be gettable depending on the value of m_type. */
+    // Now we have one getter for each member, but with some
+    // safety checks because not  all  members should be gettable
+    // depending on the value of m_type.
 
     Type type() const { return m_type; }
 
     bool option_has_value() const {
-        // We should not be able to ask this question
-        // if this is not an option parameter.
+        // We should not be able to  ask this question if this is
+        // not an option parameter.
         FAIL_( m_type != Type::OPTION );
         return m_option_has_value;
     }
 
     char option() const {
-        // We can not get the name of the option if this
-        // is not an option.
+        // We can not get the name  of  the option if this is not
+        // an option.
         FAIL_( m_type != Type::OPTION );
         return m_option;
     }
 
     string const& value() const {
-        // We cannot get a value if this is an option
-        // parameter but does not have a value attached.
+        // We cannot get a value  if  this is an option parameter
+        // but does not have a value attached.
         FAIL_( m_type == Type::OPTION && !m_option_has_value );
         return m_value;
     }
 
 private:
-    // Not all of these parameters are relevant in all cases.
-    // It depends on the value of m_type.
+    // Not all of these parameters are  relevant in all cases. It
+    // depends on the value of m_type.
     Type     m_type;
     bool     m_option_has_value;
     char     m_option;
@@ -104,8 +104,8 @@ bool parse_impl( set<char> const&            options,
     Arg const& arg = *start;
 
     // Is this the start of a non-option (i.e., positional)
-    // argument.  If so then add it to the list and recurse on
-    // the remainder.
+    // argument. If so then add it to the list and recurse on the
+    // remainder.
     if( arg.type() == Arg::Type::NORMAL )
         res.first.push_back( arg.value() );
     else if( has_key( options, arg.option() ) ) {
@@ -114,15 +114,15 @@ bool parse_impl( set<char> const&            options,
         // Is this option one that needs a value?
         if( has_key( with_value, arg.option() ) ) {
             string value;
-            // This option needs a value; is it attached to
-            // this parameter, or a separate argument?
+            // This option needs a value;  is it attached to this
+            // parameter, or a separate argument?
             if( arg.option_has_value() )
-                // It is attached to this parameter, so extract
+                // It is attached to  this  parameter, so extract
                 // it and continue.
                 value = arg.value();
             else {
-                // Value must be next parameter, so therefore
-                // we must have a next non-option parameter.
+                // Value must be next  parameter, so therefore we
+                // must have a next non-option parameter.
                 start++;
                 if( start == end ||
                     start->type() == Arg::Type::OPTION ) {
@@ -139,9 +139,9 @@ bool parse_impl( set<char> const&            options,
                  << "' does not take values." << endl;
             return false;
         }
-        // Looks good, so store the option.  Depending on
-        // what happened above, it may or may not have a
-        // value inside op_val.
+        // Looks good, so store the option. Depending on what
+        // happened above, it may or may  not have a value inside
+        // op_val.
         res.second[arg.option()] = op_val;
     }
     else {
@@ -154,7 +154,7 @@ bool parse_impl( set<char> const&            options,
 }
 
 /****************************************************************
-* Driver for options parsing.  This is what you should call from
+* Driver for options parsing. This  is  what you should call from
 * main.
 ****************************************************************/
 bool parse( int              argc,

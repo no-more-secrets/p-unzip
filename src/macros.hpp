@@ -13,8 +13,8 @@
 #define STRING_JO1N(arg1, arg2) arg1 ## arg2
 #define STRING_JOIN(arg1, arg2) STRING_JO1N(arg1, arg2)
 
-// FAIL is the converse of assert.  It will throw if the
-// condition passed to it evaluates to true.
+// FAIL is the converse of assert. It will throw if the condition
+// passed to it evaluates to true.
 #define FAIL( a, b ) if( a ) {                                 \
     std::ostringstream out;                                    \
     out << "error:" __FILE__ ":";                              \
@@ -37,9 +37,9 @@
         cerr << "unknown error";                               \
     }
 
-// This can be used to execute an arbitrary block of code
-// at startup (when the binary is loaded).  It is used
-// like this: STARTUP() { cout << "some code here"; }
+// This can be used to execute an arbitrary block of code at
+// startup (when the binary is loaded). It is used like this:
+// STARTUP() { cout << "some code here"; }
 #define STARTUP()                                              \
     struct STRING_JOIN( register_, __LINE__ ) {                \
         STRING_JOIN( register_, __LINE__ )();                  \
