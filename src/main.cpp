@@ -31,6 +31,7 @@ int main_( options::positional positional,
     ************************************************************/
     bool q    = has_key( options, 'q' ); // quiet
     bool exts = has_key( options, 'a' ); // no long extensions
+    bool g    = has_key( options, 'g' ); // diagnostic info
 
     /************************************************************
     * Determine timestamp (TS) policy
@@ -122,13 +123,15 @@ int main_( options::positional positional,
     * The zip file name will be one of the positional arguments.
     * Note that the option parsing mechanism should already have
     * validated that there is exactly one positional argument. */
-    string file = positional[0];
+    string f = positional[0];
 
     /************************************************************
     * Unzip
     *************************************************************
-    * Do the unzip and print out the diagnostics returned. */
-    cerr << p_unzip( file, j, q, strategy, chunk, ts_xform, exts );
+    * Do the unzip, and, if the user has requested so, print
+    * diagnostic info to stderr. */
+    auto info = p_unzip( f, j, q, strategy, chunk, ts_xform, exts );
+    if( g ) cerr << info;
 
     return 0;
 }

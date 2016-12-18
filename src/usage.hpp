@@ -46,10 +46,12 @@ static char const* info =
     "                 anti-virus, in which case this flag"   "\n"
     "                 has been observed to significantly"    "\n"
     "                 improve extraction times.  All other"  "\n"
-    "                 users/platforms should ignore it."     "\n";
+    "                 users/platforms should ignore it."     "\n"
+    ""                                                       "\n"
+    "   -g          : Output diagnostic info to stderr."     "\n";
 
 // Options that do not take a value
-static auto options_no_val   = { 'h', 'q', 'a' };
+static auto options_no_val   = { 'h', 'q', 'a', 'g' };
 // Options that must take a value
 static auto options_val      = { 'j', 'd', 'c', 't' };
 
