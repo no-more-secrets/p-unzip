@@ -1,6 +1,6 @@
 /****************************************************************
-* Command line options processing. This module is generic and
-* does not depend on the specific options of any one program.
+* Command line options  processing.  This  module  is generic and
+* does not depend on  the  specific  options  of any one program.
 ****************************************************************/
 #include "options.hpp"
 
@@ -12,13 +12,13 @@ using namespace std;
 namespace options {
 
 // For convenience: this function  is  used  ONLY on options that
-// can take values, and furthermore, it is assumed that all
-// options in the map that must take values will have values.
-// This will be the case if this  options map was prepared by the
+// can take values, and furthermore,  it  is assumed that all op-
+// tions in the map that must  take values will have values. This
+// will be the case  if  this  options  map  was  prepared by the
 // framework. In any case, it will get  the value of an option if
 // that option is present in the map. If the option is not
 // present in the map it will return the default value. Again, if
-// the option is present in the map but has an empty Optional
+// the option is present in  the  map  but  has an empty Optional
 // value then an exception will be throw.
 string option_get( options& op, char k, string const& def ) {
     if( !has_key( op, k ) )
@@ -30,7 +30,7 @@ string option_get( options& op, char k, string const& def ) {
 
 /****************************************************************
 * Arg: container for holder a  parameter  a labeling it as either
-* an option or non-option (option means starts with a dash).
+* an option or  non-option  (option  means  starts  with a dash).
 * These objects are immutable.
 ****************************************************************/
 class Arg {
@@ -51,7 +51,7 @@ public:
         }
     }
 
-    // Now we have one getter for each member, but with some
+    // Now we have one  getter  for  each  member,  but with some
     // safety checks because not  all  members should be gettable
     // depending on the value of m_type.
 
@@ -89,7 +89,7 @@ private:
 };
 
 /****************************************************************
-* Options parser.  Implemented using recursion.
+* Options parser. Implemented using recursion.
 ****************************************************************/
 bool parse_impl( set<char> const&            options,
                  set<char> const&            with_value,
@@ -103,9 +103,9 @@ bool parse_impl( set<char> const&            options,
 
     Arg const& arg = *start;
 
-    // Is this the start of a non-option (i.e., positional)
-    // argument. If so then add it to the list and recurse on the
-    // remainder.
+    // Is this the start of a non-option (i.e., positional) argu-
+    // ment. If so then add it to the list and recurse on the re-
+    // mainder.
     if( arg.type() == Arg::Type::NORMAL )
         res.first.push_back( arg.value() );
     else if( has_key( options, arg.option() ) ) {
@@ -139,7 +139,7 @@ bool parse_impl( set<char> const&            options,
                  << "' does not take values." << endl;
             return false;
         }
-        // Looks good, so store the option. Depending on what
+        // Looks good, so  store  the  option.  Depending on what
         // happened above, it may or may  not have a value inside
         // op_val.
         res.second[arg.option()] = op_val;

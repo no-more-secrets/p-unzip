@@ -1,7 +1,7 @@
 /****************************************************************
 * Functions for taking a list of zip entries and distributing the
-* files among a number of threads. Each function, called a
-* "strategy", is reflected at load time and is available though a
+* files among a number of  threads.  Each  function, called a "s-
+* trategy", is reflected at load  time  and is available though a
 * global dictionary by name.
 ****************************************************************/
 #include "macros.hpp"
@@ -13,8 +13,8 @@
 
 using namespace std;
 
-// Take a distribution function and wrap it with a wrapper
-// function that will just call  it  and then perform some sanity
+// Take a distribution function and wrap  it with a wrapper func-
+// tion that will  just  call  it  and  then  perform some sanity
 // checking.
 #define WRAP( with )                                         \
     [] ( size_t _1, files_range const& _2 ) -> index_lists { \
@@ -27,11 +27,11 @@ using namespace std;
 #define STRATEGY( name ) \
     STARTUP() { distribute[TO_STRING( name )] = WRAP( name ); }
 
-// Global dictionary is located and populated in this module.
+// Global dictionary is  located  and  populated  in this module.
 map<string, distributor_t> distribute;
 
 // This is a wrapper  around  each  of the distribution functions
-// that will perform some sanity checking post facto. All the
+// that will perform some  sanity  checking  post  facto. All the
 // distribution functions get run by way of this wrapper.
 index_lists wrapper( size_t             threads,
                      files_range const& files,
@@ -58,14 +58,14 @@ index_lists wrapper( size_t             threads,
 
 /****************************************************************
 * The functions below will take a number of threads and a list of
-* zip entries and will distribute them according to the given
+* zip entries and will  distribute  them  according  to the given
 * strategy.
 ****************************************************************/
 
 // The "cyclic" strategy will first sort  the files by path name,
 // then will iterate through the sorted list while cycling
-// through the list of threads, i.e., the first file will be
-// assigned to the first thread,  the  second  file to the second
+// through the list of threads, i.e.,  the first file will be as-
+// signed to the first  thread,  the  second  file  to the second
 // thread, the Nth file to the (N % threads) thread.
 index_lists distribution_cyclic( size_t             threads,
                                  files_range const& files ) {
@@ -77,19 +77,19 @@ index_lists distribution_cyclic( size_t             threads,
 }
 STRATEGY( cyclic ) // Register this strategy
 
-//________________________________________________________________
+// ______________________________________________________________
 
 // The "sliced" strategy will first sort  the files by path name,
 // then will divide the  resulting  list  into threads pieces and
 // will assign each slice to  the  corresponding thread, i.e., if
 // there are two threads, then the  first  half of the files will
-// go to the first thread and the second half to the second.
+// go to the first  thread  and  the  second  half to the second.
 index_lists distribution_sliced( size_t             threads,
                                  files_range const& files ) {
-    // First we copy the zip stats and sort them by name.
-    // Typically they will already  be  sorted,  but just in case
+    // First we copy the zip stats  and  sort them by name. Typi-
+    // cally they will already be sorted, but just in case
     // they're not, we do it  here.  This is important because we
-    // want to minimize the number of folders whose files are
+    // want to minimize the  number  of  folders  whose files are
     // split among multiple threads.
     vector<ZipStat> stats( files.begin(), files.end() );
     auto by_name = []( ZipStat const& l, ZipStat const& r ) {
@@ -114,7 +114,7 @@ index_lists distribution_sliced( size_t             threads,
     size_t count = 0;
     for( auto const& zs : stats ) {
         // This branch will be true most  of the time. It will be
-        // false at the very end of the range when we hit the
+        // false at the very end  of  the  range  when we hit the
         // residual items.
         size_t where = (count < sliced_end) ? count / chunk
                                             : count % threads;
@@ -126,12 +126,12 @@ index_lists distribution_sliced( size_t             threads,
 }
 STRATEGY( sliced ) // Register this strategy
 
-//________________________________________________________________
+// ______________________________________________________________
 
 // The "bytes" strategy will  try  to  assign each thread roughly
 // the same number of total bytes  to write. However, in practice
 // the number bytes written by  each  thread  will not be exactly
-// the same because a given file must be assigned to a single
+// the same because a given  file  must  be  assigned to a single
 // thread in its entirety.
 index_lists distribution_bytes(  size_t             threads,
                                  files_range const& files ) {
@@ -146,8 +146,8 @@ index_lists distribution_bytes(  size_t             threads,
     sort( stats.begin(), stats.end(), by_size );
     vector<vector<uint64_t>> thread_idxs( threads );
     // These will hold the  running  sums of total (uncompressed)
-    // bytes that each thread will have to extract. We want
-    // ideally (in this strategy at least) to balance them.
+    // bytes that each thread will have  to extract. We want ide-
+    // ally (in this strategy at least) to balance them.
     vector<uint64_t> totals( threads, 0 );
     for( auto const& zs : stats ) {
         auto where = min_element( totals.begin(), totals.end() )
@@ -160,14 +160,14 @@ index_lists distribution_bytes(  size_t             threads,
 }
 STRATEGY( bytes ) // Register this strategy
 
-//________________________________________________________________
+// ______________________________________________________________
 
-// This function, which is a template for a strategy, will
-// compile a list of all  folders  along with metrics computed on
-// each folder, which are  calculated  using  the metric function
-// supplied as an argument. It will then sort the list of folders
-// by the magnitude of the their associated metrics. It will then
-// iterate through the list of folders and assign each to a
+// This function, which is a  template  for a strategy, will com-
+// pile a list of all folders along with metrics computed on each
+// folder, which are calculated  using  the  metric function sup-
+// plied as an argument. It will then sort the list of folders by
+// the magnitude of the  their  associated  metrics. It will then
+// iterate through the  list  of  folders  and  assign  each to a
 // thread in a manner such as to  try to keep total metric of the
 // threads as uniform as possible.  The idea behind this strategy
 // is to never assign files from the same folder to more than one
@@ -198,7 +198,7 @@ index_lists by_folder( size_t             threads,
         vector<uint64_t> m_idxs;
         uint64_t         m_metric;
     };
-    // First we need to aggregate files that are in the same
+    // First we need to  aggregate  files  that  are  in the same
     // folder.
     map<FilePath, Data> folder_map;
     for( auto const& zs : files )
@@ -213,7 +213,7 @@ index_lists by_folder( size_t             threads,
         return l.m_metric > r.m_metric;
     };
     sort( folder_infos.begin(), folder_infos.end(), by_metric );
-    // At this point we have a list of folders along with the
+    // At this point we have  a  list  of  folders along with the
     // total metric of each folder,  so  now just do an equitable
     // distribution of folders among the threads.
     vector<vector<uint64_t>> thread_idxs( threads );
@@ -228,13 +228,13 @@ index_lists by_folder( size_t             threads,
         ti.insert( ti.end(), info.m_idxs.begin(), info.m_idxs.end() );
         metrics[idx] += info.m_metric;
     }
-    // At this point the files in a given folder should be
-    // assigned exclusively to a single thread and the metric for
+    // At this point the files  in  a  given folder should be as-
+    // signed exclusively to a single  thread  and the metric for
     // each thread should be about the same.
     return thread_idxs;
 }
 
-//________________________________________________________________
+// ______________________________________________________________
 
 // This is a "by_folder" strategy  whose  metric  for a given zip
 // entry is 1. This means that  we assume runtime is proportional
@@ -248,10 +248,10 @@ index_lists distribution_folder_files( size_t             threads,
 }
 STRATEGY( folder_files ) // Register this strategy
 
-//________________________________________________________________
+// ______________________________________________________________
 
 // This is a "by_folder" strategy  whose  metric  for a given zip
-// entry is the number of uncompressed bytes it will contain.
+// entry is the number  of  uncompressed  bytes  it will contain.
 // This means that we assume runtime  is proportional to the time
 // needed to write the uncompressed file contents to disk.
 index_lists distribution_folder_bytes( size_t             threads,

@@ -1,7 +1,7 @@
 /****************************************************************
 * Application-specific data describing the  kinds of command line
 * arguments and flags  that  are  expected/allowed/required. This
-* header is only intended to be included by a single module.
+* header is only intended  to  be  included  by  a single module.
 ****************************************************************/
 #pragma once
 
@@ -55,8 +55,8 @@ static auto options_no_val   = { 'h', 'q', 'a', 'g' };
 // Options that must take a value
 static auto options_val      = { 'j', 'd', 'c', 't' };
 
-// Minimum number of positional arguments that any valid
-// commandline must have.
+// Minimum number of positional arguments that any valid command-
+// line must have.
 static size_t min_positional = 1;
 
 } // namespace usage

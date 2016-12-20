@@ -1,8 +1,7 @@
 /****************************************************************
 * Main interface to the parallel unzip functionality. This header
-* contains the API function as well as definitions of data
-* structures for communication information to and from that
-* function.
+* contains the API function as well as definitions of data struc-
+* tures for communication information to  and from that function.
 ****************************************************************/
 #include "utils.hpp"
 
@@ -34,12 +33,12 @@ struct UnzipSummary {
     std::string            filename;
     // These next two should just echo the values that are passed
     // in unless one of the  special  values is given which might
-    // cause the unzip algorithm to select appropriate values
-    // itself; in that case, these  will hold the values actually
+    // cause the unzip algorithm to select appropriate values it-
+    // self; in that case,  these  will  hold the values actually
     // used.
     size_t                 jobs_used;
     std::string            strategy_used;
-    // Size in bytes of chunk_size actually used. This would
+    // Size in bytes  of  chunk_size  actually  used.  This would
     // differ from the one passed  into  the  function if zero is
     // passed in which case chunk_size is the size of the largest
     // file in the archive.
@@ -48,7 +47,7 @@ struct UnzipSummary {
     size_t                 files;
     // Number of files extracted by  each  thread (ts = threads).
     std::vector<size_t>    files_ts;
-    // Total bytes written (i.e., total uncompressed size).
+    // Total  bytes  written  (i.e.,  total  uncompressed  size).
     uint64_t               bytes;
     // Number of bytes extracted by  each  thread (ts = threads).
     std::vector<uint64_t>  bytes_ts;
@@ -91,29 +90,28 @@ std::ostream& operator<<( std::ostream& out,
 *
 * ts_xform: this is a callable from time_t -> time_t. Each time a
 * file is decompressed and written to disk, this function will be
-* called with argument equal to the timestamp of the archived
+* called with argument equal  to  the  timestamp  of the archived
 * file as it is stored in the zip. Whatever is returned from this
 * function will then be set  as  the  timestamp of the file. This
-* gives the caller the opportunity to alter the time stamp if
-* desired. Most of the time the caller will want to pass the
-* "identity" function, effectively causing the timestamps
-* archived in the zip to be  used  (erasing time zone, as usual).
-* If this function returns zero then  no timestamp will be set on
-* the file, effectively just  defaulting  to  the file extraction
-* time.
+* gives the caller the opportunity to alter the time stamp if de-
+* sired. Most of the time the caller will want to pass the "iden-
+* tity" function, effectively causing  the timestamps archived in
+* the zip to be used (erasing time zone, as usual). If this func-
+* tion returns zero then no  timestamp  will  be set on the file,
+* effectively just defaulting to the file extraction time.
 *
 * short_exts: Turn on a behavior (intended to be an optimization)
-* where all filenames with extensions longer than three
-* characters will be temporarily written to files with short
-* extensions while being extracted, then will later be renamed to
-* their original name. This is  an  obscure  feature used only on
-* Windows running Symantec anti-virus software to workaround some
-* possibly strange performance  issues  with  file creation times
-* for file names meeting certain criteria.
+* where all filenames with  extensions  longer than three charac-
+* ters will be temporarily written to files with short extensions
+* while being extracted,  then  will  later  be  renamed to their
+* original name. This is an obscure  feature used only on Windows
+* running Symantec anti-virus  software  to  workaround some pos-
+* sibly strange performance issues  with  file creation times for
+* file names meeting certain criteria.
 *
 * This function will throw on any  error.  So if it returns, then
 * hopefully that means that  everything  went  according to plan.
-* The object returned will contain diagnostic info collected
+* The object  returned  will  contain  diagnostic  info collected
 * during the unzip process. It can be ignored. */
 UnzipSummary p_unzip( std::string filename,
                       size_t      jobs       = 1,

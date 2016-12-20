@@ -22,7 +22,7 @@ public:
     void destroyer();
 
     // Will read the entire contents of the file from the current
-    // File position and will leave the file position at EOF.
+    // File position and will  leave  the  file  position at EOF.
     Buffer read();
 
     // Will write `count` bytes of  buffer  to file starting from
@@ -59,7 +59,7 @@ public:
     // True if there are zero components.
     bool empty() const { return m_components.empty(); }
 
-    // Remove leading component, throw if there are no more.
+    // Remove leading component,  throw  if  there  are  no more.
     FilePath dirname() const;
 
     // Get basename if one exists;  this means basically just the
@@ -104,7 +104,7 @@ OptPairFilePath split_ext( FilePath const& fp );
 // Join two paths efficiently with moving
 FilePath operator/( FilePath const& left, FilePath const& right );
 
-// For convenience.  Will just call str() and then output.
+// For convenience. Will just call str() and then output.
 std::ostream& operator<<( std::ostream& out, FilePath const& path );
 
 /****************************************************************
@@ -118,8 +118,8 @@ using OptPairStr = Optional<std::pair<std::string,std::string>>;
 // string on the last dot and  return  the substrings that are to
 // the left and right of it. The dot on which the string is split
 // is removed; this means that this dot will not appear in either
-// of the output strings, although the "left" component may
-// contain other dots.
+// of the output strings, although  the "left" component may con-
+// tain other dots.
 OptPairStr split_ext( std::string const& s );
 
 /****************************************************************
@@ -127,8 +127,8 @@ OptPairStr split_ext( std::string const& s );
 ****************************************************************/
 
 // Create folder and all parents, and  do  not fail if it already
-// exists. Will throw on any other error. Note: if you are
-// creating multiple folders in  succession  then  you should use
+// exists. Will throw on any other  error.  Note: if you are cre-
+// ating multiple  folders  in  succession  then  you  should use
 // mkdirs_p below as it will be more efficient.
 void mkdir_p( FilePath const& path );
 
@@ -141,15 +141,15 @@ void mkdirs_p( std::vector<FilePath> const& paths );
 // fails. Will set both mod time  and  access time to this value.
 // Since we're using time_t this means  the resolution is only at
 // the level of one second, however this is fine here because zip
-// files only have a resolution of two seconds. The time is
-// interpreted as the epoch time (so it implicitly has a time
+// files only have a resolution of  two  seconds. The time is in-
+// terpreted as the  epoch  time  (so  it  implicitly  has a time
 // zone). However, note that zip files do not carry any time zone
 // information, so interpreting a timestamp from a zip file as an
-// epoch time can cause inconsistencies when dealing with zip
-// files that are zipped and unzipped in different timezones.
+// epoch time can  cause  inconsistencies  when  dealing with zip
+// files that are  zipped  and  unzipped  in different timezones.
 void set_timestamp( std::string const& path, time_t time );
 
-// Rename a file. Will detect when arguments are equal and do
+// Rename a file. Will  detect  when  arguments  are equal and do
 // nothing.
 void rename_file( std::string const& path,
                   std::string const& path_new );

@@ -28,7 +28,7 @@
 #endif
 #endif
 
-// This is for convenience when small bits of code depend on
+// This is for convenience  when  small  bits  of  code depend on
 // platform. The first argument will be used if we are on a posix
 // system, and the second otherwise.
 #ifdef POSIX

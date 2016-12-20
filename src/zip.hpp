@@ -17,8 +17,8 @@
 class ZipStat {
 
 public:
-    // This is the zero-based index within the archive of the
-    // element represented by this ZipStat.
+    // This is the zero-based index within the archive of the el-
+    // ement represented by this ZipStat.
     zip_uint64_t index()     const;
     // File/folder name of entry. Folder names end with /
     std::string  name()      const;
@@ -59,20 +59,20 @@ public:
     size_t size() const { return stats.size(); }
 
     // Access the given element of  the archive with a zero-based
-    // index and return the ZipStat describing it at the time
+    // index and return the  ZipStat  describing  it  at the time
     // that the zip was originally opened.
     ZipStat const& at( uint64_t idx ) const;
 
     // Access the given element of  the archive with a zero-based
-    // index and return the ZipStat describing it at the time
+    // index and return the  ZipStat  describing  it  at the time
     // that the zip was originally opened.
     ZipStat const& operator[]( uint64_t idx ) const {
         return at( idx );
     }
 
-    // Create a new buffer of the size necessary to hold the
-    // uncompressed contents, then do the uncompression and
-    // return the buffer.
+    // Create a new buffer of the  size necessary to hold the un-
+    // compressed contents, then do  the uncompression and return
+    // the buffer.
     Buffer extract( uint64_t idx ) const;
 
     // Uncompress file into existing buffer. Throws if the buffer
@@ -80,17 +80,17 @@ public:
     void extract_in( uint64_t idx, Buffer& buffer ) const;
 
     // Uncompress file directly to  disk.  If  the disk file does
-    // not exist it will be created, otherwise it will be
-    // overwritten. Will throw if everything does not go
-    // smoothly. The purpose of  this  function  is to decompress
-    // the data in small bits and write  it  to the file as it is
-    // decompressed, and also to allow the  caller to set the the
-    // size of the chunks in  which  the data is decompressed and
-    // written to disk. This is to avoid having to hold the
-    // entire contents of the  uncompressed  file  in memory at a
-    // time and to control  throughput  in  the disk writes. Note
-    // that the size of the supplied buffer, which holds the
-    // chunks as they are decompressed, sets the chunk size.
+    // not exist it will be  created,  otherwise it will be over-
+    // written. Will throw if  everything  does  not go smoothly.
+    // The purpose of this function is  to decompress the data in
+    // small bits and write it to the file as it is decompressed,
+    // and also to allow the caller  to  set  the the size of the
+    // chunks in which the  data  is  decompressed and written to
+    // disk. This is to avoid having  to hold the entire contents
+    // of the uncompressed file in memory  at  a time and to con-
+    // trol throughput in the disk writes.  Note that the size of
+    // the supplied buffer, which  holds  the  chunks as they are
+    // decompressed, sets the chunk size.
     void extract_to( uint64_t    idx,
                      std::string const& file,
                      Buffer&     buf ) const;

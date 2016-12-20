@@ -18,12 +18,12 @@ namespace {
 // data to the caller from  a  single  thread. Among this data is
 // the return value indicating success/failure.
 struct thread_output {
-    // Note that `ret` defaults to false, which means that it
-    // assumes failure unless explicitely changed to true.
+    // Note that `ret` defaults to false, which means that it as-
+    // sumes failure unless explicitely changed to true.
     thread_output()
         : watch(), files( 0 ), bytes( 0 ), tmp_files( 0 )
         , ret( false ) {}
-    // The thread will record timing info here so that we can
+    // The thread will record  timing  info  here  so that we can
     // e.g. understand the runtime actually spent in each thread.
     StopWatch            watch;
     // Total number of files written by  this thread. This is for
@@ -49,9 +49,9 @@ using NameMap = function<string( string const& )>;
 * This is the function that will  be  given to each of the thread
 * objects. It will create  a  new  zip_source_t and zip_t objects
 * out of the original zip-file buffer  (since we don't know if we
-* can share a zip_t object among threads) and it will then
-* proceed to extract the files that it has been assigned,
-* represented by the vector of indices  into the list of archived
+* can share a zip_t object among  threads)  and it will then pro-
+* ceed to extract the  files  that  it  has been assigned, repre-
+* sented by the  vector  of  indices  into  the  list of archived
 * files.
 ****************************************************************/
 void unzip_worker( size_t                  thread_idx,
@@ -64,16 +64,16 @@ void unzip_worker( size_t                  thread_idx,
                    thread_output&          data )
 {
     // This mutex protects logging  of  file  names during unzip.
-    // Without this lock the various threads' printing would
-    // conflict and lead to messy output.
+    // Without this lock the various threads' printing would con-
+    // flict and lead to messy output.
     static mutex log_name_mtx;
 
     TRY
     // Start the clock. Each  thread  reports  its total runtime.
     data.watch.start( "unzip" );
-    // Create the zip here because we don't know if libzip or
+    // Create the zip here  because  we  don't  know if libzip or
     // zlib are thread safe. All  that  the  Zip creation will do
-    // here is to change the ref count on the buffer which is
+    // here is to change the  ref  count  on  the buffer which is
     // thread safe since it's a shared_ptr.
     Zip zip( zip_buffer );
     // Allocate a new buffer for use only within this thread that
@@ -83,14 +83,14 @@ void unzip_worker( size_t                  thread_idx,
     // Now just loop over each entry
     for( auto idx : idxs ) {
         // This will be the file name. It should never be a
-        // folder name (i.e., ending in forward slash) since
+        // folder name  (i.e.,  ending  in  forward  slash) since
         // those should have already been filtered out and
         // pre-created.
         string name( zip[idx].name() );
         // Get size of the uncompressed data of entry.
         uint64_t size = zip[idx].size();
-        // If the caller chooses, we log the name of the file
-        // being unzipped by protect the logging with a mutex
+        // If the caller chooses,  we  log  the  name of the file
+        // being unzipped by  protect  the  logging  with a mutex
         // otherwise different threads  will  step  on each other
         // causing jumbled output.
         if( !quiet ) {
@@ -99,7 +99,7 @@ void unzip_worker( size_t                  thread_idx,
                 to_string( thread_idx ) + "> " << name << endl;
         }
         // Allow the caller to specify  a  temporary name for the
-        // file while it is being extracted. If the callback
+        // file while it  is  being  extracted.  If  the callback
         // function returns a name different  from the input name
         // then the file will  be  written  to the temporary name
         // while being extracted, then will be renamed afterward.
@@ -209,9 +209,9 @@ ostream& operator<<( ostream& out, UnzipSummary const& us ) {
 
 // The idea of this function is to take an arbitrary input string
 // and then hash it, where  the  hash is a three-character string
-// made up only of characters suitable for a file extension.
-// Basically we just hash the string to a 32 bit number, then use
-// each of the first three bytes in the hash to select three
+// made up only of characters suitable  for a file extension. Ba-
+// sically we just hash the string  to  a 32 bit number, then use
+// each of the first  three  bytes  in  the  hash to select three
 // characters from a list to form a three character string. There
 // are about 46k possible results.
 string ext3( string const& s ) {
@@ -249,8 +249,8 @@ UnzipSummary p_unzip( string    filename,
     // Open the zip file, read it  completely into a buffer, then
     // manage the buffer with a  shared  pointer. This is because
     // the buffer will be used possibly  by many zip objects, and
-    // we must ensure that it stays alive until they are all
-    // finished.
+    // we must ensure that it stays alive until they are all fin-
+    // ished.
     Buffer::SP zip_buffer =
         make_shared<Buffer>( File( filename, "rb" ).read() );
 
@@ -270,8 +270,8 @@ UnzipSummary p_unzip( string    filename,
     auto folders = make_range( stats.begin(), folders_end );
     auto files   = make_range( folders_end,   stats.end() );
 
-    // Time how long it takes to load the zip and handle the
-    // ZipStat data structures.
+    // Time how long it takes to load the zip and handle the Zip-
+    // Stat data structures.
     res.watch.stop( "load_zip" );
 
     // If this is zero then we'll go into an endless loop writing
@@ -283,9 +283,9 @@ UnzipSummary p_unzip( string    filename,
     * Create the `temp name map` function
     *************************************************************
     * Establish a function that  takes  a  archived file name and
-    * maps it to another name. This new name is used as the
-    * temporary location to use when extracting/writing the file.
-    * After extraction is complete it will be renamed to the
+    * maps it to another name. This new  name is used as the tem-
+    * porary location to  use  when  extracting/writing the file.
+    * After extraction is  complete  it  will  be  renamed to the
     * proper name.
     *
     * There could potentially be  multiple  uses for this mapping
@@ -297,23 +297,23 @@ UnzipSummary p_unzip( string    filename,
     * were made on Windows  machines  running Symantec Anti-Virus
     * software. It appears that this  AV  software has a negative
     * affect on file creation  time  in general, but particularly
-    * so for files whose names contain extensions longer than
+    * so for files  whose  names  contain  extensions longer than
     * three characters.
     *
-    * So, when an archived file has an extension longer than
+    * So, when an  archived  file  has  an  extension longer than
     * three chars we will, instead  of  extracting it directly as
-    * for most other files, we will extract it to a temporary
+    * for most other files,  we  will  extract  it to a temporary
     * file with an extention ==  three  chars. Then, after we are
-    * finished extracting, we will rename it to the original
+    * finished extracting, we  will  rename  it  to  the original
     * name. For some  mysterious  reason,  this can significantly
     * boost performance on the Windows  desktop machines on which
-    * measurements were taken (at the time of this writing).
+    * measurements were taken  (at  the  time  of  this writing).
     *
     * And it gets even stranger... if  the filename begins with a
-    * dot we will keep it as is... this comes from empirical
-    * observations that suggest that mapping files that start
-    * with a dot (even when they have an extension > 3 chars)
-    * actually slows it down again. */
+    * dot we will keep it as  is... this comes from empirical ob-
+    * servations that suggest that mapping  files that start with
+    * a dot (even when they have an extension > 3 chars) actually
+    * slows it down again. */
 
     // The default mapping does nothing.
     NameMap get_tmp_name = id<string>;
@@ -321,10 +321,10 @@ UnzipSummary p_unzip( string    filename,
     if( short_exts ) {
         // This function must be thread safe!
         get_tmp_name = []( string const& input ) {
-            // Must use FilePath variant of split_ext here
-            // because the string  variant  could potential split
-            // on a dot in a parent folder. NOTE: first component
-            // (if there is one) contains the dot at the end!
+            // Must use FilePath  variant  of  split_ext here be-
+            // cause the string variant  could potential split on
+            // a dot in a  parent  folder.  NOTE: first component
+            // (if there is one)  contains  the  dot  at the end!
             auto opt_p = split_ext( FilePath( input ) );
             if( !opt_p ) return input;
             auto const& fst = opt_p.get().first;
@@ -340,7 +340,7 @@ UnzipSummary p_unzip( string    filename,
     *************************************************************
     * In a parallel unzip we  must  pre-create all of the folders
     * that are mentioned in  the  zip  file either explicitely or
-    * implicitely. If we attempt to do this within the worker
+    * implicitely. If we attempt  to  do  this  within the worker
     * threads then we would likely have race conditions and write
     * conflicts. So this way, when  the worker threads start, all
     * of the necessary folders are  already there. First, we will
@@ -358,7 +358,7 @@ UnzipSummary p_unzip( string    filename,
     ************************************************************/
     FAIL( !has_key( distribute, strategy ),
         "strategy " << strategy << " is invalid." );
-    // Do the distribution. The result should be a vector of
+    // Do the distribution.  The  result  should  be  a vector of
     // length equal to the  number  of  jobs. Each element should
     // itself be a vector  if  indexs representing files assigned
     // to that thread for extraction.
@@ -420,7 +420,7 @@ UnzipSummary p_unzip( string    filename,
         ++job;
     }
 
-    // Make sure that the sum of files counts for each thread
+    // Make sure that the  sum  of  files  counts for each thread
     // equals the total number of files  in  the zip. This is the
     // reason that we are  not  just  writing files.size() to get
     // res.files.

@@ -8,7 +8,7 @@ using namespace std;
 * Zip
 ****************************************************************/
 Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
-    // First creat a "zip source" from the raw pointer to the
+    // First creat a "zip  source"  from  the  raw pointer to the
     // buffer containing the binary data of the zip file. The zip
     // source will not take ownership  of  the buffer. TODO: need
     // to call error APIs to extract error msg
@@ -32,9 +32,9 @@ Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
     }
 }
 
-// Create a new buffer of the size necessary to hold the
-// uncompressed contents, then  do  the  uncompression and return
-// the buffer.
+// Create a new buffer of the  size  necessary to hold the uncom-
+// pressed contents, then  do  the  uncompression  and return the
+// buffer.
 Buffer Zip::extract( uint64_t idx ) const {
     Buffer out( size_t( at( idx ).size() ) );
     extract_in( idx, out );
@@ -47,7 +47,7 @@ void Zip::extract_to( uint64_t idx,
                       string   const& file,
                       Buffer&  buf ) const {
     FAIL_( buf.size() == 0 );
-    // First open the file to which we will write the result.
+    // First open the file  to  which  we  will write the result.
     File out( file, "wb" );
     // Get uncompressed file size
     zip_int64_t fsize = at( idx ).size();
@@ -58,8 +58,8 @@ void Zip::extract_to( uint64_t idx,
     zip_int64_t total = 0;
     while( true ) {
         auto read = zip_fread( zf, buf.get(), buf.size() );
-        // May return -1 on error; not clear whether it will
-        // return zero if no error  but  no bytes read. In either
+        // May return -1 on error; not  clear whether it will re-
+        // turn zero if no  error  but  no  bytes read. In either
         // case, it's probably correct to  just  break out of the
         // loop instead of throwing if read <= 0.
         if( read <= 0 ) break;
@@ -73,8 +73,8 @@ void Zip::extract_to( uint64_t idx,
     // !! Close immediately to avoid resource leak.
     zip_fclose( zf );
     // If we haven't read a number of bytes equal to the reported
-    // size of the uncompressed file then throw. Otherwise
-    // succeed. This should be adequate no matter how we got here
+    // size of the uncompressed  file  then throw. Otherwise suc-
+    // ceed. This should be adequate  no  matter  how we got here
     // and/or whether zip_fread returned -1 or not.
     FAIL_( total != fsize );
 }
@@ -97,10 +97,10 @@ void Zip::extract_in( uint64_t idx, Buffer& buffer ) const {
     FAIL_( zip_uint64_t( count ) != fsize );
 }
 
-// This will release the underlying zip source, but not the
+// This will release  the  underlying  zip  source,  but  not the
 // buffer from which the  zip  source  was created. However, when
 // all Zip objects that refer to a certain Buffer go out of scope
-// then the buffer will be freed because we are holding the
+// then the buffer  will  be  freed  because  we  are holding the
 // buffer in a shared pointer.
 void Zip::destroyer() {
     zip_close( p );
@@ -122,7 +122,7 @@ zip_uint64_t ZipStat::index() const {
     return stat.index;
 }
 
-// File/folder name of entry.  Folder names end with /
+// File/folder name of entry. Folder names end with /
 string ZipStat::name() const {
     FAIL_( !(stat.valid & ZIP_STAT_NAME) );
     return string( stat.name );
@@ -142,9 +142,9 @@ zip_uint64_t ZipStat::comp_size() const {
 
 // Last mod time. This will be  rounded to the nearest two-second
 // boundary and contains no timezone since zip files do not store
-// timezone. So the time returned by this function must be
-// interpreted based on the  known  timezone  of the machine that
-// created the zip. Typically, it  is  interpreted as local time.
+// timezone. So the time returned by this function must be inter-
+// preted based on the known timezone of the machine that created
+// the zip. Typically, it is interpreted as local time.
 time_t ZipStat::mtime() const {
     FAIL_( !(stat.valid & ZIP_STAT_MTIME) );
     return stat.mtime;
@@ -157,8 +157,8 @@ bool ZipStat::is_folder() const {
 }
 
 // If the entry is a folder then  it  will return the name in the
-// entry itself, otherwise it will strip off the filename and
-// return the parent folders.
+// entry itself, otherwise it will strip off the filename and re-
+// turn the parent folders.
 FilePath ZipStat::folder() const {
     FilePath res( name() );
     if( !is_folder() )

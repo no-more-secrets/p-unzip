@@ -21,9 +21,9 @@ void usage_exit( int code = 0 ) {
     exit( code );
 }
 
-// Wrapper around the application's main() function that will
-// handle option parsing and catching/printing uncaught
-// exceptions.
+// Wrapper around the  application's  main()  function  that will
+// handle option parsing  and  catching/printing  uncaught excep-
+// tions.
 int main( int argc, char* argv[] )
 {
     try {
@@ -36,8 +36,8 @@ int main( int argc, char* argv[] )
         opt_all.insert( opt_val.begin(), opt_val.end() );
 
         // Do the parsing/processing  of  arguments,  taking into
-        // account the above sets representing what the
-        // application is expecting.
+        // account the above sets  representing what the applica-
+        // tion is expecting.
         options::opt_result opt_result;
         if( !options::parse( argc,
                              argv,

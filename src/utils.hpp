@@ -27,8 +27,8 @@ bool has_key( ContainerT const& s, KeyT const& k ) {
 }
 
 // Get value for key from map;  if  map  does not contain the key
-// then simply return the default value specified WITHOUT
-// inserting it into the map.
+// then simply return  the  default  value  specified WITHOUT in-
+// serting it into the map.
 template<typename KeyT, typename ValT>
 ValT const& map_get( std::map<KeyT, ValT> const& m,
                      KeyT const& k,
@@ -82,7 +82,7 @@ auto id( T t ) -> T { return t; }
 // key function. The key function will be applied to each element
 // of the iterable to yield a key, then the keys will be compared
 // with the < operator to find the maximum. The return value will
-// be value of the iterable whose key was found to be maximum
+// be value of the iterable  whose  key  was  found to be maximum
 // (but not the value of that key itself).
 template<typename It, typename KeyF>
 auto maximum( It start, It end, KeyF f ) -> decltype( *start ) {
@@ -153,9 +153,9 @@ private:
 
 /****************************************************************
 * Range class for turning pairs  of iterators into iterables. The
-* future ranges library will probably do this better. At the
-* moment this will only work  for random access iterators because
-* of the size().
+* future ranges library will probably do  this better. At the mo-
+* ment this will only work for random access iterators because of
+* the size().
 ****************************************************************/
 template<typename T>
 class Range {
@@ -199,7 +199,7 @@ public:
     Buffer( size_t length );
 
     // This is for VS 2013  which  does not supply implicite move
-    // constructors (which, if it did, should be identical to
+    // constructors (which, if  it  did,  should  be identical to
     // this one below).
     Buffer( Buffer&& from )
         : Handle<void, Buffer>( std::move( from ) )
