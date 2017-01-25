@@ -74,6 +74,14 @@ int main_( options::positional positional,
     }
 
     /************************************************************
+    * Get optional output folder prefix
+    ************************************************************/
+    // The user has the opportunity to specify a folder path  for
+    // extraction. Whatever they specify will simply be prepended
+    // to each path in the zip archive before extraction.
+    string o( option_get( options, 'o', "" ) );
+
+    /************************************************************
     * Determine the number of jobs to use
     ************************************************************/
     // First initialize the number of  jobs to its default value.
@@ -114,7 +122,7 @@ int main_( options::positional positional,
     * Distribution of files to the threads
     *************************************************************
     * See if the user has  specified  a distribution strategy. */
-    string strategy( option_get( options, 'd', DEFAULT_DIST ) );
+    string strat( option_get( options, 'd', DEFAULT_DIST ) );
 
     /************************************************************
     * Get zip file name
@@ -129,7 +137,7 @@ int main_( options::positional positional,
     *************************************************************
     * Do the unzip, and, if the  user has requested so, print di-
     * agnostic info to stderr. */
-    auto info = p_unzip( f, j, q, strategy, chunk, ts_xform, exts );
+    auto info = p_unzip( f, j, q, o, strat, chunk, ts_xform, exts );
     if( g ) cerr << info;
 
     return 0;

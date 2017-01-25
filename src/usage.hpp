@@ -38,6 +38,10 @@ static char const* info =
     "                 decompressed and written to disk."     "\n"
     "                 Default is some sensible value."       "\n"
     ""                                                       "\n"
+    "   -o          : Specify output folder.  This folder"   "\n"
+    "                 will be prepended to all files in the" "\n"
+    "                 archive before extraction."            "\n"
+    ""                                                       "\n"
     "   -a          : Avoid creating files with long"        "\n"
     "                 extensions.  Instead, create them"     "\n"
     "                 with short extensions then rename."    "\n"
@@ -53,7 +57,7 @@ static char const* info =
 // Options that do not take a value
 static auto options_no_val   = { 'h', 'q', 'a', 'g' };
 // Options that must take a value
-static auto options_val      = { 'j', 'd', 'c', 't' };
+static auto options_val      = { 'j', 'd', 'c', 't', 'o' };
 
 // Minimum number of positional arguments that any valid command-
 // line must have.

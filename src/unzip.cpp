@@ -61,6 +61,7 @@ void unzip_worker( size_t                  thread_idx,
                    bool                    quiet,
                    TSXFormer               ts_xform,
                    NameMap const&          get_tmp_name,
+                   string const&           output,
                    thread_output&          data )
 {
     // This mutex protects logging  of  file  names during unzip.
@@ -83,10 +84,14 @@ void unzip_worker( size_t                  thread_idx,
     // Now just loop over each entry
     for( auto idx : idxs ) {
         // This will be the file name. It should never be a
-        // folder name  (i.e.,  ending  in  forward  slash) since
+        // folder  name  (i.e.,  ending  in  forward slash) since
         // those should have already been filtered out and
-        // pre-created.
-        string name( zip[idx].name() );
+        // pre-created. We also prepend  an  output folder to the
+        // path if specified by the user (otherwise  will  be  an
+        // empty string).
+        string name(
+            FilePath( output ).join( zip[idx].name() ).str()
+        );
         // Get size of the uncompressed data of entry.
         uint64_t size = zip[idx].size();
         // If the caller chooses,  we  log  the  name of the file
@@ -233,6 +238,7 @@ string ext3( string const& s ) {
 UnzipSummary p_unzip( string    filename,
                       size_t    jobs,
                       bool      quiet,
+                      string    output,
                       string    strategy,
                       size_t    chunk_size,
                       TSXFormer ts_xform,
@@ -338,18 +344,20 @@ UnzipSummary p_unzip( string    filename,
     /************************************************************
     * Pre-create folder structure
     *************************************************************
-    * In a parallel unzip we  must  pre-create all of the folders
-    * that are mentioned in  the  zip  file either explicitely or
-    * implicitely. If we attempt  to  do  this  within the worker
+    * In a parallel unzip we must pre-create all of  the  folders
+    * that  are  mentioned  in the zip file either explicitely or
+    * implicitely. If we attempt to do  this  within  the  worker
     * threads then we would likely have race conditions and write
-    * conflicts. So this way, when  the worker threads start, all
+    * conflicts.  So this way, when the worker threads start, all
     * of the necessary folders are  already there. First, we will
-    * gather all the folder names that  are mentioned both in the
+    * gather all the folder names that are mentioned both in  the
     * archive explicitly through folder entries or implicitely as
-    * the paths to files. */
+    * the paths to files. We  also  prepend `output` to each one,
+    * which is an optional  folder  prefix  into  which the files
+    * should be extracted. */
     vector<FilePath> fps;
     for( auto const& zs : stats )
-        fps.push_back( zs.folder() );
+        fps.push_back( FilePath( output ).join( zs.folder() ) );
     // Now we ensure that each one exists.
     res.watch.run( "folders", [&]{ mkdirs_p( fps ); } );
 
@@ -389,6 +397,7 @@ UnzipSummary p_unzip( string    filename,
                              quiet,
                              ts_xform,
                              ref( get_tmp_name ),
+                             output,
                              ref( outputs[i] ) );
 
     // Wait for everything to finish.
