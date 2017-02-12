@@ -16,7 +16,7 @@ ifeq ($(OS),OSX)
     GCC_HOME           = /Users/dsicilia/dev/tools/bin
 else
     # On linux let's do a static linkage
-    LDFLAGS += -static -static-libgcc -static-libstdc++
+    #LDFLAGS += -static -static-libgcc -static-libstdc++
 endif
 
 $(call enter,src)
