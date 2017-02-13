@@ -223,8 +223,7 @@ string ext3( string const& s ) {
     // List of all chars that  we  will  use when generating file
     // extensions. We don't include  uppercase letters because on
     // Windows/OSX file names are case-insensitive.
-    // FIXME: removed x to avoid .exe
-    static string const cs( "abcdefghijklmnopqrstuvwwyz0123456789" );
+    static string const cs( "abcdefghijklmnopqrstuvwxyz0123456789" );
     static size_t const size( cs.size() );
     // Helper to get the nth  element  of string modulo its size.
     static auto get = [&]( size_t n ){ return cs[n % size]; };
@@ -335,10 +334,8 @@ UnzipSummary p_unzip( string    filename,
             auto opt_p = split_ext( FilePath( input ) );
             if( !opt_p ) return input;
             auto const& fst = opt_p.get().first;
-            if( fst.basename() == "." )
-                return input;
             string snd( opt_p.get().second.str() );
-            return ( snd.size() > 3 || to_lower( snd ) == "exe" )
+            return ( fst.basename() != "." && snd.size() > 3 )
                    ? fst.add_ext( ext3( snd ) ).str()
                    : input;
         };

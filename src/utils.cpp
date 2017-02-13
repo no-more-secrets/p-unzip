@@ -4,10 +4,8 @@
 #include "macros.hpp"
 #include "utils.hpp"
 
-#include <algorithm>
 #include <cstdint>
 #include <cstdio>
-#include <cctype>
 #include <iomanip>
 #include <iostream>
 
@@ -25,15 +23,6 @@ uint32_t string_hash( string const& s ) {
     for( auto const& c : s )
         hash = (hash * A)^( uint32_t( c ) * B );
     return hash;
-}
-
-// Return a new string with all chars lowercase.
-std::string to_lower( std::string const& s ) {
-    string res( s );
-    transform( s.begin(), s.end(), res.begin(), []( char c ) {
-        return char( tolower( c ) );
-    });
-    return res;
 }
 
 /****************************************************************
