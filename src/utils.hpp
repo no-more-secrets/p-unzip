@@ -49,6 +49,9 @@ inline bool ends_with( std::string const& s, char c ) {
     return s.size() > 0 && s[s.size()-1] == c;
 }
 
+// Return a new string with all chars lowercase.
+std::string to_lower( std::string const& s );
+
 template<typename T>
 std::string to_string( T const& x ) {
     std::ostringstream ss;
