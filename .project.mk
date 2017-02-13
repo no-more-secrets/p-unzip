@@ -14,6 +14,9 @@ ifeq ($(OS),OSX)
     TP_LINK_EXTRA     += -L/opt/local/lib
     LIBZIP_INCLUDE    := -I/opt/local/lib/libzip/include
     GCC_HOME           = /Users/dsicilia/dev/tools/bin
+else
+    # On linux let's do a static linkage
+    #LDFLAGS += -static -static-libgcc -static-libstdc++
 endif
 
 $(call enter,src)
