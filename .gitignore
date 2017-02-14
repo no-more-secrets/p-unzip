@@ -29,7 +29,6 @@
 *.out
 *.app
 /.location
-/bin-*
 *.zip
 /src/p-unzip
 /Makefile
@@ -37,3 +36,8 @@
 
 # vim
 *.swp
+
+bin-linux*
+lib-linux*
+bin-osx*
+lib-osx*
