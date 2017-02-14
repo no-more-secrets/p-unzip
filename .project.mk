@@ -7,8 +7,6 @@ CC  = $(GCC_HOME)/g++
 CXX = $(CC)
 LD  = $(CC)
 
-#ENABLE_BIN_FOLDER = 1
-
 ifeq ($(OS),OSX)
     TP_INCLUDES_EXTRA += -I/opt/local/include
     TP_LINK_EXTRA     += -L/opt/local/lib
@@ -17,6 +15,7 @@ ifeq ($(OS),OSX)
 else
     # On linux let's do a static linkage
     #LDFLAGS += -static -static-libgcc -static-libstdc++
+    LDFLAGS += -static-libgcc -static-libstdc++
 endif
 
 $(call enter,src)
