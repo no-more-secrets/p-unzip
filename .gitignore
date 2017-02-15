@@ -38,6 +38,6 @@
 *.swp
 
 bin-linux*
-lib-linux*
+.lib-linux
 bin-osx*
-lib-osx*
+.lib-osx
