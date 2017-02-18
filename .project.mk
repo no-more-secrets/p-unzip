@@ -7,6 +7,8 @@ CC  = $(GCC_HOME)/g++
 CXX = $(CC)
 LD  = $(CC)
 
+no_top_bin_folder = 1
+
 ifeq ($(OS),OSX)
     TP_INCLUDES_EXTRA += -I/opt/local/include
     TP_LINK_EXTRA     += -L/opt/local/lib
