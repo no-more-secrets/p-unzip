@@ -1,9 +1,9 @@
 CXXFLAGS += -std=c++11 -Wfatal-errors -pthread
 LDFLAGS  += -pthread
 
-GCC_HOME=/usr/bin
+GPLUSPLUS ?= /usr/bin/g++
 
-CC  = $(GCC_HOME)/g++
+CC  = $(GPLUSPLUS)
 CXX = $(CC)
 LD  = $(CC)
 
