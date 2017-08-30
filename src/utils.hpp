@@ -229,7 +229,7 @@ public:
     // Perfect forwarding
     template<typename V>
     explicit Optional( V&& s )
-        : has_value( true )
+        : has_value( true ) // ?! ?! FIXME
         , value( std::forward<V>( s ) )
     {}
 
