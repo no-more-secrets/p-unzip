@@ -226,10 +226,11 @@ struct Optional {
 public:
     Optional() : has_value( false ) {}
 
-    // Perfect forwarding
+    // Perfect forwarding. We set has_value to  true  always  be-
+    // cause we're  always  assigning  something  to  the  value.
     template<typename V>
     explicit Optional( V&& s )
-        : has_value( true ) // ?! ?! FIXME
+        : has_value( true )
         , value( std::forward<V>( s ) )
     {}
 
