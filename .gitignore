@@ -31,6 +31,7 @@
 /.location
 *.zip
 /src/p-unzip
+/p-unzip
 /Makefile
 /*.sh
 
@@ -38,6 +39,6 @@
 *.swp
 
 bin-linux*
-.lib-linux
+.lib-linux*
 bin-osx*
 .lib-osx
