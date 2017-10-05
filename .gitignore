@@ -41,4 +41,4 @@
 bin-linux*
 .lib-linux*
 bin-osx*
-.lib-osx
+.lib-osx*
