@@ -31,7 +31,7 @@
 /.location
 *.zip
 /src/p-unzip
-/p-unzip
+/p-unzip*
 /Makefile
 /*.sh
 
