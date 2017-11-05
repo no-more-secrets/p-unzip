@@ -1,6 +1,6 @@
-// This is an optional pre-compiled header, generated
-// on 2017-02-12.  Seems to speed up a single-core
-// build by about 20% with gcc on os x.
+// This is an optional pre-compiled header, generated on
+// 2017-02-12. Seems to speed up a single-core build by about 20%
+// with gcc on os x.
 #include <algorithm>
 #include <iomanip>
 #include <iostream>

@@ -5,11 +5,11 @@
 
 #include <cstddef>
 
-// This macro will be used by  the  rest  of the code to know the
+// This macro will be used by the rest of the code  to  know  the
 // platform (among those that are supported).
 #undef PLATFORM
-// For the moment, this must be set,  because we need the user to
-// tell us how to fill in  the  PLATFORM variable, although it is
+// For the moment, this must be set, because we need the user  to
+// tell us how to fill in the PLATFORM variable, although  it  is
 // possible that we could eventually auto detect this.
 #ifdef OS_LINUX
 #   define PLATFORM Linux

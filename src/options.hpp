@@ -1,6 +1,6 @@
 /****************************************************************
-* Command line options  processing.  This  module  is generic and
-* does not depend on  the  specific  options  of any one program.
+* Command  line  options  processing.  This module is generic and
+* does  not  depend  on  the  specific options of any one program.
 ****************************************************************/
 #pragma once
 
@@ -19,13 +19,13 @@ using options    = std::map<char, Optional<std::string>>;
 using opt_result = std::pair<positional, options>;
 
 // For convenience: this function  is  used  ONLY on options that
-// can take values, and furthermore,  it  is assumed that all op-
+// can  take  values,  and furthermore, it is assumed that all op-
 // tions in the map that must  take values will have values. This
-// will be the case  if  this  options  map  was  prepared by the
-// framework. In any case, it will get  the value of an option if
+// will  be  the  case  if  this  options map was prepared by the
+// framework. In any case, it will get the value of an option  if
 // that option is present in the map. If the option is not
 // present in the map it will return the default value. Again, if
-// the option is present in  the  map  but  has an empty Optional
+// the option is present in the map but  has  an  empty  Optional
 // value then an exception will be throw.
 std::string option_get( options& op, char  k,
                         std::string const& def );

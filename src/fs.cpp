@@ -1,5 +1,5 @@
 /****************************************************************
-* File system related functionality.  Both  high-level methods as
+* File system related functionality. Both high-level  methods  as
 * well as platform-dependent function calls.
 ****************************************************************/
 #include "config.hpp"
@@ -15,7 +15,7 @@
 using namespace std;
 
 /****************************************************************
-* Functions   that  require  platform-specific   implementations.
+* Functions   that   require   platform-specific  implementations.
 ****************************************************************/
 #ifndef POSIX
 #   include <windows.h>
@@ -32,8 +32,7 @@ using namespace std;
 #   include <sys/utime.h>
 #endif
 
-// Someone is defining this  somewhere  and  it's  f*ck*ng up our
-// sh**.
+// Someone is defining this somewhere and it's f'ing things up.
 #undef max
 
 namespace {
@@ -112,7 +111,7 @@ Buffer File::read() {
 }
 
 // Will write the entire contents of buffer to file starting from
-// the file's current position. Will throw if not all bytes writ-
+// the  file's current position. Will throw if not all bytes writ-
 // ten.
 void File::write( Buffer const& buffer, uint64_t count ) {
     FAIL( mode != "wb", "attempted write in mode " << mode );
@@ -129,7 +128,7 @@ void File::write( Buffer const& buffer, uint64_t count ) {
 *****************************************************************
 * Here we will basically split  the  path  at the forward slashes
 * and store each component  in  the  m_components vector. We will
-* throw if we are given  an  absolute  path  or a path with back-
+* throw  if  we  are  given  an absolute path or a path with back-
 * slashes. Note that an empty string is a valid FilePath and will
 * result in a FilePath with an empty list of components. This has
 * the meaning of the "." folder. */
@@ -142,7 +141,7 @@ FilePath::FilePath( string const& path ) {
         "Rooted path " << path << " not supported." );
     FAIL( find( path.begin(), path.end(), '\\' ) != path.end(),
         "backslashes in path are not supported" );
-    // TODO: This should be replaced with a generic "split" algo-
+    // TODO:  This should be replaced with a generic "split" algo-
     // rithm.
     string::const_iterator next = path.begin();
     while( true ) {
@@ -160,16 +159,16 @@ FilePath::FilePath( string const& path ) {
 
 void FilePath::assert_invariants() const {
     // We do not want to  ever  have  a situation where the first
-    // component of a multi-component  path  is  an empty string.
-    // This is dangerous because, such  a path, when converted to
-    // a string, would begin with  a  path separator, which would
+    // component  of  a  multi-component  path is an empty string.
+    // This  is dangerous because, such a path, when converted to
+    // a  string,  would begin with a path separator, which would
     // mean absolute path.
     FAIL_( m_components.size()     > 0 &&
            m_components[0].size() == 0 )
 }
 
 // Assemble the components into a string where the components are
-// separated by slashes. There will never  be  a slash at the be-
+// separated by slashes. There will never be a slash  at  the  be-
 // ginning or a slash at the end.
 string FilePath::str() const {
     string res;
@@ -181,9 +180,9 @@ string FilePath::str() const {
     return res;
 }
 
-// If there is at least one  component  then this will return the
+// If  there  is at least one component then this will return the
 // FilePath representing the parent path. Note that when only one
-// component remains then  it  will  return  the "current" folder
+// component remains then it will  return  the  "current"  folder
 // which is represented as an empty  path/string (i.e., it is not
 // a dot "."). If dirname is called on an empty path then it will
 // throw.
@@ -202,7 +201,7 @@ string const& FilePath::basename() const {
     return m_components.back();
 }
 
-// Adds a dot followed by the given string to the last component.
+// Adds a dot followed by the given string to the last  component.
 // Creates one if there is no last component.
 FilePath FilePath::add_ext( string const& ext ) const {
     FilePath res( *this );
@@ -213,11 +212,11 @@ FilePath FilePath::add_ext( string const& ext ) const {
     return res;
 }
 
-// Similiar to the std::string  variant  of  split_ext, but takes
+// Similiar to the std::string variant of  split_ext,  but  takes
 // FilePaths, and only considers  dots  in  the last component of
-// the path. In order to handle  cases where the file name begins
+// the path. In order to handle cases where the file name  begins
 // with a dot, this function  will  include  the dot in the first
-// component, which  is  different  from  split_ext  for strings.
+// component, which  is  different  from  split_ext  for  strings.
 OptPairFilePath split_ext( FilePath const& fp ) {
     if( fp.empty() )
         return OptPairFilePath();
@@ -250,7 +249,7 @@ std::ostream& operator<<( std::ostream& out,
 // string on the last dot and  return  the substrings that are to
 // the left and right of it. The dot on which the string is split
 // is removed; this means that this dot will not appear in either
-// of the output strings, although  the "left" component may con-
+// of the output strings, although the "left" component  may  con-
 // tain other dots.
 OptPairStr split_ext( string const& s ) {
     auto pos = s.find_last_of( '.' );
@@ -267,11 +266,11 @@ OptPairStr split_ext( string const& s ) {
 ****************************************************************/
 
 /* This is a helper function  which  will  consult a cache before
- * hitting the file system in  order  to help implement mkdirs_p.
- * Any FilePath in the cache is  assumed to exist. It uses recur-
- * sion to ensure that a  parent  path  is constructed before its
- * child. It will not throw if one or more folders already exist,
- * but it will throw if one of  them  exists but is not a folder.
+ * hitting  the  file  system in order to help implement mkdirs_p.
+ * Any FilePath in the cache is  assumed  to exist. It uses recur-
+ * sion  to  ensure  that a parent path is constructed before its
+ * child. It will not throw if one or more folders already  exist,
+ * but  it  will  throw if one of them exists but is not a folder.
  * */
 void mkdir_p( set<FilePath>& cache, FilePath const& path ) {
     if( path.empty() || has_key( cache, path ) )
@@ -289,7 +288,7 @@ void mkdir_p( set<FilePath>& cache, FilePath const& path ) {
 }
 
 /* Create folder and all parents, and  do  not fail if it already
- * exists. Will throw on any other  error.  Note: if you are cre-
+ * exists.  Will  throw  on any other error. Note: if you are cre-
  * ating multiple  folders  in  succession  then  you  should use
  * mkdirs_p below as it will be more efficient. */
 void mkdir_p( FilePath const& path ) {
@@ -298,7 +297,7 @@ void mkdir_p( FilePath const& path ) {
 }
 
 /* Has the effect of calling mkdir_p  on  each of the elements in
- * the list. Implementation is efficient in  that it will use a a
+ * the  list. Implementation is efficient in that it will use a a
  * cache to avoid redundant calls to the filesystem. */
 void mkdirs_p( std::vector<FilePath> const& paths ) {
     set<FilePath> cache;
@@ -306,16 +305,16 @@ void mkdirs_p( std::vector<FilePath> const& paths ) {
         mkdir_p( cache, path );
 }
 
-// Set the time stamp of a  file  given  a path. Will throw if it
-// fails. Will set both mod time  and  access time to this value.
-// Since we're using time_t this means  the resolution is only at
+// Set  the  time  stamp of a file given a path. Will throw if it
+// fails. Will set both mod  time  and  access time to this value.
+// Since  we're using time_t this means the resolution is only at
 // the level of one second, however this is fine here because zip
-// files only have a resolution of  two  seconds. The time is in-
-// terpreted as the  epoch  time  (so  it  implicitly  has a time
-// zone). However note that zip files  do not carry any time zone
+// files only have a resolution  of  two  seconds. The time is in-
+// terpreted as the epoch time  (so  it  implicitly  has  a  time
+// zone).  However note that zip files do not carry any time zone
 // information, so interpreting a timestamp from a zip file as an
 // epoch time can  cause  inconsistencies  when  dealing with zip
-// files that are  zipped  and  unzipped  in different timezones.
+// files  that  are  zipped  and  unzipped in different timezones.
 void set_timestamp( string const& path, time_t time ) {
     OS_SWITCH( utimbuf, _utimbuf ) times;
     times.actime  = time;
@@ -325,12 +324,12 @@ void set_timestamp( string const& path, time_t time ) {
 }
 
 // Rename a file. Will  detect  when  arguments  are equal and do
-// nothing. Will  replace  the  destination  file  if  it exists.
+// nothing. Will  replace  the  destination  file  if  it  exists.
 void rename_file( string const& path, string const& path_new ) {
     if( path == path_new )
         return;
-    // Setup a function that takes two  file names, does the move
-    // (with replacement  of  existing  files)  and  then returns
+    // Setup a function that takes two file names, does the  move
+    // (with replacement of  existing  files)  and  then  returns
     // something "true" on error.
     auto func = OS_SWITCH(
         /* Linux */

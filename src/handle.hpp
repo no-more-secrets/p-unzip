@@ -9,14 +9,14 @@
 #include <typeinfo>
 
 /****************************************************************
-* This is a "moveable handle". It  will hold/manage a handle to a
-* resource and ensure that the resource  gets released. It is im-
+* This is a "moveable handle". It will hold/manage a handle to  a
+* resource and ensure that the resource gets released. It  is  im-
 * plemented to disallow the holding of NULL pointer values, since
-* if it holds such a value  and  you  try  to get() it, the class
+* if  it  holds  such  a value and you try to get() it, the class
 * will throw. This container can also hold weak references in the
-* sense that it can be marked as non-owning by setting the appro-
+* sense  that it can be marked as non-owning by setting the appro-
 * priate flag. Implementation uses the recursive template pattern
-* (CRTP), so must be subclassed  and templatized on the subclass.
+* (CRTP),  so  must be subclassed and templatized on the subclass.
 ****************************************************************/
 template<typename PtrT, typename Child>
 class Handle {
@@ -42,8 +42,8 @@ public:
         right.release();
     }
 
-    // This object may contain  a  valid  pointer  to  a live re-
-    // source, but will only release it  if it has ownership over
+    // This  object  may  contain  a  valid  pointer to a live re-
+    // source, but will only release it if it has ownership  over
     // it. Furthermore, it will  use  the  CRTP  to release it by
     // calling the derived class's destroyer() method.
     void destroy() {
@@ -55,12 +55,12 @@ public:
 
     ~Handle() { destroy(); }
 
-    // These objects may or may  not  hold a NULL value. However,
-    // we decide that if someone tries  to get() the pointer from
-    // this container and it is NULL then that is likely an indi-
+    // These objects may or may not hold a  NULL  value.  However,
+    // we  decide that if someone tries to get() the pointer from
+    // this  container and it is NULL then that is likely an indi-
     // cation of a problem, so throw an exception. There could be
-    // some use cases for getting a NULL pointer out of these ob-
-    // jects, but there are probably better ways to achieve what-
+    // some use cases for getting a NULL pointer out of these  ob-
+    // jects, but there are probably  better ways to achieve what-
     // ever is trying to be achieved there.
     PtrT* get() {
         FAIL( !p, "child: " << typeid(Child).name() );

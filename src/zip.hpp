@@ -17,7 +17,7 @@
 class ZipStat {
 
 public:
-    // This is the zero-based index within the archive of the el-
+    // This  is the zero-based index within the archive of the el-
     // ement represented by this ZipStat.
     zip_uint64_t index()     const;
     // File/folder name of entry. Folder names end with /
@@ -27,15 +27,15 @@ public:
     // Compressed size of entry.
     zip_uint64_t comp_size() const;
     // Last mode time. This will be rounded to the nearest
-    // two-second boundary and  contains  no  timezone. Also, zip
-    // files do not store timezone. So  the time returned by this
+    // two-second  boundary  and  contains no timezone. Also, zip
+    // files do not store timezone. So the time returned by  this
     // function must be interpreted  based  on the known timezone
     // of the machine that created the zip.
     time_t       mtime()     const;
-    // Will return true if the  entry  represents a folder, which
+    // Will  return  true if the entry represents a folder, which
     // is if the name ends in a forward slash.
     bool         is_folder() const;
-    // If the entry is a folder  then  it will return the name in
+    // If  the  entry is a folder then it will return the name in
     // the entry itself, otherwise it will strip off the filename
     // and return the parent folders.
     FilePath     folder()    const;
@@ -59,19 +59,19 @@ public:
     size_t size() const { return stats.size(); }
 
     // Access the given element of  the archive with a zero-based
-    // index and return the  ZipStat  describing  it  at the time
+    // index  and  return  the  ZipStat describing it at the time
     // that the zip was originally opened.
     ZipStat const& at( uint64_t idx ) const;
 
     // Access the given element of  the archive with a zero-based
-    // index and return the  ZipStat  describing  it  at the time
+    // index  and  return  the  ZipStat describing it at the time
     // that the zip was originally opened.
     ZipStat const& operator[]( uint64_t idx ) const {
         return at( idx );
     }
 
-    // Create a new buffer of the  size necessary to hold the un-
-    // compressed contents, then do  the uncompression and return
+    // Create a new buffer of the  size  necessary to hold the un-
+    // compressed  contents, then do the uncompression and return
     // the buffer.
     Buffer extract( uint64_t idx ) const;
 
@@ -80,15 +80,15 @@ public:
     void extract_in( uint64_t idx, Buffer& buffer ) const;
 
     // Uncompress file directly to  disk.  If  the disk file does
-    // not exist it will be  created,  otherwise it will be over-
-    // written. Will throw if  everything  does  not go smoothly.
-    // The purpose of this function is  to decompress the data in
-    // small bits and write it to the file as it is decompressed,
+    // not exist it will be created, otherwise it  will  be  over-
+    // written. Will throw  if  everything  does  not go smoothly.
+    // The  purpose of this function is to decompress the data in
+    // small bits and write it to the file as it is  decompressed,
     // and also to allow the caller  to  set  the the size of the
-    // chunks in which the  data  is  decompressed and written to
-    // disk. This is to avoid having  to hold the entire contents
-    // of the uncompressed file in memory  at  a time and to con-
-    // trol throughput in the disk writes.  Note that the size of
+    // chunks in which the data is decompressed  and  written  to
+    // disk.  This is to avoid having to hold the entire contents
+    // of the uncompressed file in memory at a time  and  to  con-
+    // trol  throughput in the disk writes. Note that the size of
     // the supplied buffer, which  holds  the  chunks as they are
     // decompressed, sets the chunk size.
     void extract_to( uint64_t    idx,
@@ -98,7 +98,7 @@ public:
     typedef std::vector<ZipStat>::const_iterator
             const_iterator;
 
-    // These are to support  range-based  for, and basically just
+    // These are to support range-based for, and  basically  just
     // exposed the iteration properties of the vector.
     const_iterator begin() { return stats.begin(); }
     const_iterator end()   { return stats.end();   }

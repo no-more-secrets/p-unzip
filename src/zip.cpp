@@ -8,9 +8,9 @@ using namespace std;
 * Zip
 ****************************************************************/
 Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
-    // First creat a "zip  source"  from  the  raw pointer to the
+    // First creat a "zip source" from the  raw  pointer  to  the
     // buffer containing the binary data of the zip file. The zip
-    // source will not take ownership  of  the buffer. TODO: need
+    // source will not take ownership of the buffer.  TODO:  need
     // to call error APIs to extract error msg
     zip_error_t   error;
     zip_source_t* zs;
@@ -32,7 +32,7 @@ Zip::Zip( Buffer::SP& b_ ) : b( b_ ) {
     }
 }
 
-// Create a new buffer of the  size  necessary to hold the uncom-
+// Create  a  new  buffer of the size necessary to hold the uncom-
 // pressed contents, then  do  the  uncompression  and return the
 // buffer.
 Buffer Zip::extract( uint64_t idx ) const {
@@ -41,31 +41,31 @@ Buffer Zip::extract( uint64_t idx ) const {
     return out;
 }
 
-// Uncompress a file directly to disk  and allow caller to supply
+// Uncompress a file directly to disk and allow caller to  supply
 // a buffer to hold the chunks and to control chunk size.
 void Zip::extract_to( uint64_t idx,
                       string   const& file,
                       Buffer&  buf ) const {
     FAIL_( buf.size() == 0 );
-    // First open the file  to  which  we  will write the result.
+    // First open the file to which  we  will  write  the  result.
     File out( file, "wb" );
     // Get uncompressed file size
     zip_int64_t fsize = at( idx ).size();
     zip_file_t* zf;
-    // "open" the zip file; this  is  not  really opening a file.
+    // "open" the zip file; this is not  really  opening  a  file.
     FAIL_( !(zf = zip_fopen_index( p, idx, 0 )) );
     // !! Should not throw until zip_fclose is called
     zip_int64_t total = 0;
     while( true ) {
         auto read = zip_fread( zf, buf.get(), buf.size() );
-        // May return -1 on error; not  clear whether it will re-
-        // turn zero if no  error  but  no  bytes read. In either
+        // May  return  -1 on error; not clear whether it will re-
+        // turn  zero  if  no  error but no bytes read. In either
         // case, it's probably correct to  just  break out of the
         // loop instead of throwing if read <= 0.
         if( read <= 0 ) break;
         out.write( buf, read );
         // We need to keep a  running  total  of bytes written so
-        // that we can check at the end if they were all written.
+        // that we can check at the  end if they were all written.
         // This is because it is not guaranteed that, if we break
         // out of the loop, the entire file was written.
         total += read;
@@ -73,8 +73,8 @@ void Zip::extract_to( uint64_t idx,
     // !! Close immediately to avoid resource leak.
     zip_fclose( zf );
     // If we haven't read a number of bytes equal to the reported
-    // size of the uncompressed  file  then throw. Otherwise suc-
-    // ceed. This should be adequate  no  matter  how we got here
+    // size of the uncompressed file then  throw.  Otherwise  suc-
+    // ceed. This should be adequate no matter how  we  got  here
     // and/or whether zip_fread returned -1 or not.
     FAIL_( total != fsize );
 }
@@ -142,7 +142,7 @@ zip_uint64_t ZipStat::comp_size() const {
 
 // Last mod time. This will be  rounded to the nearest two-second
 // boundary and contains no timezone since zip files do not store
-// timezone. So the time returned by this function must be inter-
+// timezone. So the time returned by  this function must be inter-
 // preted based on the known timezone of the machine that created
 // the zip. Typically, it is interpreted as local time.
 time_t ZipStat::mtime() const {
@@ -156,8 +156,8 @@ bool ZipStat::is_folder() const {
     return ends_with( name(), '/' );
 }
 
-// If the entry is a folder then  it  will return the name in the
-// entry itself, otherwise it will strip off the filename and re-
+// If  the  entry is a folder then it will return the name in the
+// entry itself, otherwise it will strip  off the filename and re-
 // turn the parent folders.
 FilePath ZipStat::folder() const {
     FilePath res( name() );

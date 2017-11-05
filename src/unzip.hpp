@@ -1,7 +1,7 @@
 /****************************************************************
 * Main interface to the parallel unzip functionality. This header
-* contains the API function as well as definitions of data struc-
-* tures for communication information to  and from that function.
+* contains  the API function as well as definitions of data struc-
+* tures for communication information to and from  that  function.
 ****************************************************************/
 #include "utils.hpp"
 
@@ -11,19 +11,19 @@
 // This is the default distribution  strategy  to use if the user
 // does not specify one.
 #define DEFAULT_DIST "cyclic"
-// If chunk size is not specified  then this will be the default.
-// Chunk size is the size of  the  chunk in which which data will
+// If chunk size is not specified  then  this will be the default.
+// Chunk  size  is the size of the chunk in which which data will
 // be written to disk as it is decompressed.
 #define DEFAULT_CHUNK 4096
 #define DEFAULT_CHUNK_S TO_STRING( DEFAULT_CHUNK )
 
-// This enum represents the  possible  policies  for dealing with
+// This  enum  represents  the possible policies for dealing with
 // timestamps when extracting zip files.
 using TSXFormer = std::function<time_t( time_t )>;
 
 /****************************************************************
 * This structure is used to return statistics and diagnostic info
-* collected during the parallel  unzip  process  which can aid in
+* collected  during  the  parallel unzip process which can aid in
 * optimization and debugging.
 ****************************************************************/
 struct UnzipSummary {
@@ -80,11 +80,11 @@ std::ostream& operator<<( std::ostream& out,
 * strategy: this is the name of the strategy to use to distribute
 * the archived files among the individual threads.
 *
-* chunk_size: files will be decompressed  and  written to disk in
-* chunks of this size. Note that an  amount of heap space will be
-* allocated whose total size  in  bytes  is (jobs*chunk_size). If
-* zero is given here then  then  chunk_size  will be set equal to
-* the size of the largest file in  the archive, which can lead to
+* chunk_size:  files  will be decompressed and written to disk in
+* chunks of this size. Note that an amount of heap space will  be
+* allocated  whose  total  size in bytes is (jobs*chunk_size). If
+* zero is given here then then chunk_size will be  set  equal  to
+* the  size of the largest file in the archive, which can lead to
 * allocation failures unless all the files are small and/or there
 * are few threads.
 *
@@ -93,25 +93,25 @@ std::ostream& operator<<( std::ostream& out,
 * called with argument equal  to  the  timestamp  of the archived
 * file as it is stored in the zip. Whatever is returned from this
 * function will then be set  as  the  timestamp of the file. This
-* gives the caller the opportunity to alter the time stamp if de-
-* sired. Most of the time the caller will want to pass the "iden-
+* gives the caller the opportunity to  alter the time stamp if de-
+* sired.  Most of the time the caller will want to pass the "iden-
 * tity" function, effectively causing  the timestamps archived in
-* the zip to be used (erasing time zone, as usual). If this func-
-* tion returns zero then no  timestamp  will  be set on the file,
+* the zip to be used (erasing time zone, as usual). If this  func-
+* tion returns zero then no  timestamp  will  be  set on the file,
 * effectively just defaulting to the file extraction time.
 *
 * short_exts: Turn on a behavior (intended to be an optimization)
-* where all filenames with  extensions  longer than three charac-
+* where  all  filenames  with extensions longer than three charac-
 * ters will be temporarily written to files with short extensions
-* while being extracted,  then  will  later  be  renamed to their
-* original name. This is an obscure  feature used only on Windows
-* running Symantec anti-virus  software  to  workaround some pos-
-* sibly strange performance issues  with  file creation times for
+* while being extracted, then will  later  be  renamed  to  their
+* original  name. This is an obscure feature used only on Windows
+* running Symantec anti-virus software  to  workaround  some  pos-
+* sibly  strange  performance issues with file creation times for
 * file names meeting certain criteria.
 *
 * This function will throw on any  error.  So if it returns, then
-* hopefully that means that  everything  went  according to plan.
-* The object  returned  will  contain  diagnostic  info collected
+* hopefully  that  means  that  everything went according to plan.
+* The object returned  will  contain  diagnostic  info  collected
 * during the unzip process. It can be ignored. */
 UnzipSummary p_unzip( std::string filename,
                       size_t      jobs       = 1,

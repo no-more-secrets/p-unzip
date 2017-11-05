@@ -13,7 +13,7 @@ using namespace std;
 int main_( options::opt_result::first_type,
            options::opt_result::second_type );
 
-// If we are exiting in  error  then  print usage info to stderr,
+// If we are exiting in error then print  usage  info  to  stderr,
 // otherwise print it to stdout.
 void usage_exit( int code = 0 ) {
     auto& out = code ? cerr : cout;
@@ -21,8 +21,8 @@ void usage_exit( int code = 0 ) {
     exit( code );
 }
 
-// Wrapper around the  application's  main()  function  that will
-// handle option parsing  and  catching/printing  uncaught excep-
+// Wrapper around the application's  main()  function  that  will
+// handle  option  parsing  and  catching/printing uncaught excep-
 // tions.
 int main( int argc, char* argv[] )
 {
@@ -35,8 +35,8 @@ int main( int argc, char* argv[] )
         set<char> opt_all    = opt_no_val;
         opt_all.insert( opt_val.begin(), opt_val.end() );
 
-        // Do the parsing/processing  of  arguments,  taking into
-        // account the above sets  representing what the applica-
+        // Do  the  parsing/processing  of arguments, taking into
+        // account the above sets representing what  the  applica-
         // tion is expecting.
         options::opt_result opt_result;
         if( !options::parse( argc,
