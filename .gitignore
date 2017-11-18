@@ -32,7 +32,6 @@
 *.zip
 /src/p-unzip
 /p-unzip*
-/Makefile
 /*.sh
 
 # vim
